@@ -1,0 +1,30 @@
+/* Simple, mobile-friendly base styles */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.5;
+    color: #222;
+    background: #fafafa;
+}
+
+header {
+    padding: 0.75rem 1rem;
+    background: #2f6f4e;
+}
+
+header .logo {
+    color: #fff;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+main {
+    max-width: 700px;   /* keeps lines readable on wide screens */
+    margin: 0 auto;
+    padding: 1rem;      /* side spacing on phones */
+}
