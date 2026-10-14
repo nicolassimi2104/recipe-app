@@ -1,0 +1,13 @@
+# Python virtual environment
+venv/
+.venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Test cache
+.pytest_cache/
+
+# The SQLite database is created by the app, so don't commit it
+recipes.db
