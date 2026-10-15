@@ -137,3 +137,33 @@ def test_delete_removes_ingredients_and_tag_links(db_path):
     assert count_rows(db_path, "ingredients") == 2
     assert count_rows(db_path, "recipe_tags") == 2
     assert db.get_recipe(keep_id, db_path=db_path)["tags"] == ["breakfast", "quick"]
+
+
+# --- seed import ---
+
+def test_seed_import_runs_once(db_path):
+    first = db.import_seed_data(db_path)
+    second = db.import_seed_data(db_path)  # like starting the app a second time
+
+    assert first == 4
+    assert second == 0
+    assert len(db.list_recipes(db_path=db_path)) == 4
+
+
+def test_seed_import_skipped_when_recipes_exist(db_path):
+    make_recipe(db_path)
+
+    assert db.import_seed_data(db_path) == 0
+    assert len(db.list_recipes(db_path=db_path)) == 1
+
+
+def test_seed_import_steps_and_blank_amounts(db_path):
+    db.import_seed_data(db_path)
+    quiche = next(r for r in db.list_recipes(db_path=db_path) if r["name"].startswith("Ham"))
+    recipe = db.get_recipe(quiche["id"], db_path=db_path)
+
+    # Steps list was joined with newlines; the degree sign survived
+    assert recipe["steps"].split("\n")[0] == "Preheat oven to 375°F and grease a 9-inch dish."
+    assert len(recipe["steps"].split("\n")) == 7
+    assert recipe["ingredients"][-1] == {"amount": "", "unit": "", "name": "salt and pepper"}
+    assert recipe["tags"] == ["breakfast", "eggs", "oven"]

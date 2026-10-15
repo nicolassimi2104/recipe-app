@@ -1,0 +1,97 @@
+[
+  {
+    "name": "Ham, Spinach & Onion Quiche (crustless)",
+    "servings": 6,
+    "tags": ["breakfast", "eggs", "oven"],
+    "ingredients": [
+      {"amount": "6", "unit": "", "name": "eggs"},
+      {"amount": "1/2", "unit": "cup", "name": "heavy cream"},
+      {"amount": "2", "unit": "tbsp", "name": "cream cheese, softened"},
+      {"amount": "2", "unit": "tbsp", "name": "plain Greek yogurt"},
+      {"amount": "1", "unit": "cup", "name": "diced ham"},
+      {"amount": "1", "unit": "cup", "name": "fresh spinach, chopped"},
+      {"amount": "1/2", "unit": "", "name": "small onion, diced"},
+      {"amount": "3/4", "unit": "cup", "name": "shredded cheese (cheddar, Swiss, or Monterey Jack)"},
+      {"amount": "", "unit": "", "name": "salt and pepper"}
+    ],
+    "steps": [
+      "Preheat oven to 375°F and grease a 9-inch dish.",
+      "Sauté onion in a little butter or oil 3-4 min, add spinach, cook until wilted. Squeeze out excess liquid.",
+      "Whisk eggs, cream, cream cheese, and yogurt until smooth. Season, then stir in 1/2 cup of the cheese.",
+      "Spread ham, onion, and spinach in the dish. Pour egg mixture over top.",
+      "Sprinkle remaining 1/4 cup cheese on top.",
+      "Bake 35-40 min until center is set and top is golden.",
+      "Rest 5 min before slicing."
+    ]
+  },
+  {
+    "name": "Mushroom Butter Sauce Chicken & Potatoes",
+    "servings": 4,
+    "tags": ["dinner", "chicken", "one-pan"],
+    "ingredients": [
+      {"amount": "2 1/2", "unit": "lb", "name": "chicken thighs or breasts"},
+      {"amount": "1 1/2", "unit": "lb", "name": "red potatoes, halved"},
+      {"amount": "10", "unit": "oz", "name": "mushrooms, sliced"},
+      {"amount": "4", "unit": "", "name": "garlic cloves, minced"},
+      {"amount": "4", "unit": "tbsp", "name": "butter"},
+      {"amount": "1", "unit": "tbsp", "name": "olive oil"},
+      {"amount": "1", "unit": "tbsp", "name": "fresh thyme"},
+      {"amount": "1", "unit": "cup", "name": "chicken broth"},
+      {"amount": "1", "unit": "tsp", "name": "salt"},
+      {"amount": "1/2", "unit": "tsp", "name": "black pepper"},
+      {"amount": "1/2", "unit": "", "name": "lemon, juiced"}
+    ],
+    "steps": [
+      "Pat chicken dry, season with salt and pepper. Heat oil over medium-high. Sear chicken skin-side down 5-6 min, flip, sear 4-5 min more. Set aside.",
+      "Add 2 tbsp butter, then potatoes (cut-side down first). Cook 6-8 min until starting to soften. Add garlic, cook 1 min.",
+      "Add mushrooms, cook 4-5 min until they release liquid and brown.",
+      "Pour in broth, add thyme and remaining 2 tbsp butter. Nestle chicken back in.",
+      "Bring to a gentle simmer, reduce to medium-low, cover, and cook 15-18 min until potatoes are tender and chicken hits 165°F.",
+      "Squeeze lemon over everything, adjust seasoning. If the sauce is thin, simmer uncovered 2-3 min."
+    ]
+  },
+  {
+    "name": "Chicken Stroganoff",
+    "servings": 4,
+    "tags": ["dinner", "chicken", "quick"],
+    "ingredients": [
+      {"amount": "1 1/2", "unit": "lb", "name": "chicken breast, bite-sized pieces"},
+      {"amount": "8", "unit": "oz", "name": "mushrooms, sliced"},
+      {"amount": "1", "unit": "", "name": "large onion, sliced"},
+      {"amount": "1", "unit": "cup", "name": "sour cream"},
+      {"amount": "1/2", "unit": "cup", "name": "grated Parmesan"},
+      {"amount": "2", "unit": "tbsp", "name": "oil or butter"},
+      {"amount": "", "unit": "", "name": "salt, pepper, garlic powder"},
+      {"amount": "", "unit": "", "name": "egg noodles"}
+    ],
+    "steps": [
+      "Heat oil in a large pan over medium-high. Season chicken with salt, pepper, garlic powder.",
+      "Sear chicken until golden (5-7 min), in batches if needed. Set aside.",
+      "In the same pan, sauté mushrooms and onions until soft (5 min). Season.",
+      "Lower heat to medium. Stir in sour cream and Parmesan until combined.",
+      "Add chicken back, stir gently, simmer 2-3 min.",
+      "Cook noodles separately, serve stroganoff on top."
+    ]
+  },
+  {
+    "name": "Greek Yogurt Protein Parfait Bowls",
+    "servings": 5,
+    "tags": ["breakfast", "meal-prep", "high-protein"],
+    "ingredients": [
+      {"amount": "2", "unit": "cup", "name": "non-fat or 2% Greek yogurt"},
+      {"amount": "1", "unit": "cup", "name": "rolled oats"},
+      {"amount": "1/2", "unit": "cup", "name": "raw almonds or walnuts, chopped"},
+      {"amount": "1/2", "unit": "cup", "name": "honey or maple syrup"},
+      {"amount": "1", "unit": "tbsp", "name": "vanilla extract"},
+      {"amount": "1/2", "unit": "tsp", "name": "cinnamon"},
+      {"amount": "1", "unit": "pinch", "name": "salt"},
+      {"amount": "1", "unit": "cup", "name": "fresh berries"}
+    ],
+    "steps": [
+      "Mix yogurt, vanilla, cinnamon, and salt until smooth.",
+      "Toast oats on a baking sheet at 350°F for 8-10 min. Cool.",
+      "Toss oats with nuts and honey, spread out, bake 8-10 min more at 350°F until clumped. Cool completely.",
+      "Layer into 5 containers: yogurt, granola, berries, more granola on top."
+    ]
+  }
+]

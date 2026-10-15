@@ -1,11 +1,13 @@
 """Small helpers for talking to the SQLite database."""
 
+import json
 import sqlite3
 from pathlib import Path
 
 BASE_DIR = Path(__file__).parent
 DEFAULT_DB_PATH = BASE_DIR / "recipes.db"
 SCHEMA_PATH = BASE_DIR / "schema.sql"
+SEED_PATH = BASE_DIR / "recipes.json"
 
 
 def get_connection(db_path=DEFAULT_DB_PATH):
@@ -27,6 +29,35 @@ def init_db(db_path=DEFAULT_DB_PATH):
         conn.executescript(SCHEMA_PATH.read_text())
     finally:
         conn.close()
+
+
+def import_seed_data(db_path=DEFAULT_DB_PATH, json_path=SEED_PATH):
+    """Load the starter recipes from recipes.json, but only if there are no recipes yet.
+
+    Returns how many recipes were imported (0 if the database already had some).
+    """
+    conn = get_connection(db_path)
+    try:
+        recipe_count = conn.execute("SELECT COUNT(*) FROM recipes").fetchone()[0]
+    finally:
+        conn.close()
+    if recipe_count > 0:
+        return 0
+
+    # encoding="utf-8" so characters like ° and é read correctly on Windows
+    with open(json_path, encoding="utf-8") as f:
+        seed_recipes = json.load(f)
+
+    for recipe in seed_recipes:
+        create_recipe(
+            name=recipe["name"],
+            servings=recipe["servings"],
+            ingredients=recipe["ingredients"],
+            steps="\n".join(recipe["steps"]),  # the JSON has a list; the database stores lines
+            tags=parse_tags(",".join(recipe["tags"])),  # same cleanup as the form
+            db_path=db_path,
+        )
+    return len(seed_recipes)
 
 
 # ---------------------------------------------------------------------------

@@ -14,6 +14,7 @@ def create_app(db_path=db.DEFAULT_DB_PATH):
     app.config["DB_PATH"] = db_path
 
     db.init_db(db_path)
+    db.import_seed_data(db_path)  # only does anything when there are no recipes yet
 
     @app.route("/")
     def index():
