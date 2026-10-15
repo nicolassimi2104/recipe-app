@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Delete {{ recipe.name }} - Recipe App{% endblock %}
+
+{% block content %}
+<h1>Delete recipe?</h1>
+<p>Are you sure you want to delete <strong>{{ recipe.name }}</strong>? This can't be undone.</p>
+
+{# Deleting only happens when this form is submitted (a POST), never by just visiting a link #}
+<form method="post" class="actions">
+    <button type="submit" class="button danger">Yes, delete it</button>
+    <a href="{{ url_for('recipe_detail', recipe_id=recipe.id) }}" class="button secondary">Cancel</a>
+</form>
+{% endblock %}

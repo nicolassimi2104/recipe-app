@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{# This one template is used for both adding and editing. A recipe with an id means "edit". #}
+{% set editing = recipe.id is defined %}
+
+{% block title %}{{ "Edit recipe" if editing else "Add recipe" }} - Recipe App{% endblock %}
+
+{% block content %}
+<h1>{{ "Edit recipe" if editing else "Add recipe" }}</h1>
+
+{% if errors %}
+<div class="errors">
+    {% for error in errors %}<p>{{ error }}</p>{% endfor %}
+</div>
+{% endif %}
+
+{# The form posts back to the same URL it was loaded from (/recipes/new or /recipes/<id>/edit) #}
+<form method="post" class="recipe-form">
+    <label>Name
+        <input type="text" name="name" value="{{ recipe.name }}" required>
+    </label>
+
+    <label>Servings
+        <input type="number" name="servings" value="{{ recipe.servings }}" min="1" required>
+    </label>
+
+    <fieldset>
+        <legend>Ingredients</legend>
+        <p class="hint">Amount can be blank (e.g. "salt and pepper"). Fractions like 1/3 or 1 1/2 are fine.</p>
+        <div id="ingredient-rows">
+            {% for ing in recipe.ingredients %}
+            {{ ingredient_row(ing.amount, ing.unit, ing.name) }}
+            {% else %}
+            {# A new recipe starts with 3 empty rows #}
+            {% for i in range(3) %}{{ ingredient_row() }}{% endfor %}
+            {% endfor %}
+        </div>
+        <button type="button" id="add-ingredient" class="button secondary">+ Add ingredient</button>
+    </fieldset>
+
+    <label>Steps <span class="hint">(one step per line)</span>
+        <textarea name="steps" rows="8">{{ recipe.steps }}</textarea>
+    </label>
+
+    <label>Tags <span class="hint">(comma-separated, e.g. dinner, quick, vegetarian)</span>
+        <input type="text" name="tags" value="{{ recipe.tags | join(', ') }}">
+    </label>
+
+    <div class="actions">
+        <button type="submit" class="button">Save</button>
+        <a href="{{ url_for('recipe_detail', recipe_id=recipe.id) if editing else url_for('index') }}" class="button secondary">Cancel</a>
+    </div>
+</form>
+
+{# A hidden blank row that the "Add ingredient" button copies #}
+<template id="ingredient-row-template">{{ ingredient_row() }}</template>
+
+<script>
+    // "Add ingredient": copy the hidden blank row and put it at the end of the list
+    document.getElementById("add-ingredient").addEventListener("click", function () {
+        var template = document.getElementById("ingredient-row-template");
+        var row = template.content.cloneNode(true);
+        document.getElementById("ingredient-rows").appendChild(row);
+    });
+
+    // "Remove" buttons: delete that row from the page (it won't be saved)
+    document.getElementById("ingredient-rows").addEventListener("click", function (event) {
+        if (event.target.classList.contains("remove-row")) {
+            event.target.closest(".ingredient-row").remove();
+        }
+    });
+</script>
+{% endblock %}
+
+{# A macro is like a small function for HTML: it prints one ingredient row #}
+{% macro ingredient_row(amount="", unit="", name="") %}
+<div class="ingredient-row">
+    <input type="text" name="amount" value="{{ amount }}" placeholder="Amount" aria-label="Amount" class="amount">
+    <input type="text" name="unit" value="{{ unit }}" placeholder="Unit" aria-label="Unit" class="unit">
+    <input type="text" name="ingredient_name" value="{{ name }}" placeholder="Ingredient" aria-label="Ingredient" class="ing-name">
+    <button type="button" class="remove-row" aria-label="Remove ingredient">&times;</button>
+</div>
+{% endmacro %}

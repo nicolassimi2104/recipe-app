@@ -28,3 +28,187 @@ main {
     margin: 0 auto;
     padding: 1rem;      /* side spacing on phones */
 }
+
+h1 {
+    margin: 0.5rem 0;
+    line-height: 1.2;
+}
+
+h2 {
+    margin-top: 1.5rem;
+    font-size: 1.2rem;
+}
+
+a {
+    color: #2f6f4e;
+}
+
+/* Title and "Add recipe" button side by side, wrapping on narrow screens */
+.page-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+/* --- Buttons (links and real buttons look the same) --- */
+
+.button {
+    display: inline-block;
+    padding: 0.6rem 1rem;   /* big enough to tap on a phone */
+    border: 2px solid #2f6f4e;
+    border-radius: 6px;
+    background: #2f6f4e;
+    color: #fff;
+    font: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.button.secondary {
+    background: #fff;
+    color: #2f6f4e;
+}
+
+.button.danger {
+    background: #b3261e;
+    border-color: #b3261e;
+}
+
+.button.danger-outline {
+    background: #fff;
+    border-color: #b3261e;
+    color: #b3261e;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+/* --- Recipe list on the home page --- */
+
+.recipe-list {
+    list-style: none;
+    padding: 0;
+}
+
+.recipe-list li {
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+}
+
+.recipe-name {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+/* Servings and tags line */
+.meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.25rem;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.tag {
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;   /* pill shape */
+    background: #e3efe8;
+    color: #2f6f4e;
+    font-size: 0.8rem;
+}
+
+/* --- Detail page --- */
+
+.ingredients li,
+.steps li {
+    margin-bottom: 0.4rem;
+}
+
+/* --- Add/edit form --- */
+
+.recipe-form label {
+    display: block;
+    margin-bottom: 1rem;
+    font-weight: bold;
+}
+
+.recipe-form input,
+.recipe-form textarea {
+    display: block;
+    width: 100%;
+    margin-top: 0.25rem;
+    padding: 0.5rem;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    font: inherit;          /* also stops iPhones zooming in when you tap a box */
+    font-weight: normal;
+}
+
+fieldset {
+    margin: 0 0 1rem;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+}
+
+legend {
+    font-weight: bold;
+}
+
+.hint {
+    margin: 0 0 0.5rem;
+    color: #666;
+    font-size: 0.85rem;
+    font-weight: normal;
+}
+
+/* One ingredient row: small amount and unit boxes, wide name box, remove button */
+.ingredient-row {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+}
+
+.ingredient-row input {
+    margin-top: 0;
+    min-width: 0;           /* lets the boxes shrink on narrow phones */
+}
+
+.ingredient-row .amount { flex: 0 0 4.5rem; }
+.ingredient-row .unit   { flex: 0 0 4.5rem; }
+.ingredient-row .ing-name { flex: 1; }
+
+.remove-row {
+    flex: 0 0 2.5rem;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    background: #fff;
+    color: #b3261e;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+.errors {
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 1rem;
+    border: 1px solid #b3261e;
+    border-radius: 6px;
+    background: #fdecea;
+    color: #b3261e;
+}
+
+.errors p {
+    margin: 0.25rem 0;
+}
