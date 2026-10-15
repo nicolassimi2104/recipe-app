@@ -1,6 +1,24 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>My Recipes</h1>
-<p>Recipes coming soon.</p>
+<div class="page-head">
+    <h1>My Recipes</h1>
+    <a href="{{ url_for('recipe_new') }}" class="button">+ Add recipe</a>
+</div>
+
+{% if recipes %}
+<ul class="recipe-list">
+    {% for recipe in recipes %}
+    <li>
+        <a href="{{ url_for('recipe_detail', recipe_id=recipe.id) }}" class="recipe-name">{{ recipe.name }}</a>
+        <div class="meta">
+            <span>Serves {{ recipe.servings }}</span>
+            {% for tag in recipe.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p>No recipes yet. Add your first one!</p>
+{% endif %}
 {% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}{{ recipe.name }} - Recipe App{% endblock %}
+
+{% block content %}
+<h1>{{ recipe.name }}</h1>
+<div class="meta">
+    <span>Serves {{ recipe.servings }}</span>
+    {% for tag in recipe.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
+</div>
+
+<h2>Ingredients</h2>
+<ul class="ingredients">
+    {% for ing in recipe.ingredients %}
+    {# "select" drops the blank parts, so "salt and pepper" with no amount has no extra spaces #}
+    <li>{{ [ing.amount, ing.unit, ing.name] | select | join(" ") }}</li>
+    {% endfor %}
+</ul>
+
+<h2>Steps</h2>
+<ol class="steps">
+    {% for step in recipe.steps.splitlines() if step.strip() %}
+    <li>{{ step }}</li>
+    {% endfor %}
+</ol>
+
+<div class="actions">
+    <a href="{{ url_for('recipe_edit', recipe_id=recipe.id) }}" class="button">Edit</a>
+    <a href="{{ url_for('recipe_delete', recipe_id=recipe.id) }}" class="button danger-outline">Delete</a>
+    <a href="{{ url_for('index') }}">Back to all recipes</a>
+</div>
+{% endblock %}
