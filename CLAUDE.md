@@ -19,7 +19,8 @@ in plain language and keep code simple and readable.
 2. (DONE) Grocery list polish: check-off boxes, group by aisle, copy as text
 3. (DONE) Home page search (name + ingredient) and clickable tag filter
 4. (DONE) Recipe import: paste-JSON page (for output from a Claude chat) + import from a URL
-5. Phone access: free cloud deploy with a simple password gate and recipe export/backup
+5. (DONE) Phone access: free cloud deploy with a simple password gate and recipe export/backup
+   (hosted on PythonAnywhere free tier; owner's setup steps are in DEPLOY.md)
 
 ## Rules
 - Plan is in the URL (query params), not the database; keep it that way unless asked
