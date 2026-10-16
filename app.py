@@ -10,6 +10,7 @@ from flask import Flask, abort, redirect, render_template, request, url_for
 
 import db
 import grocery
+import importer
 import units
 
 # Upper limit for the "scale to" box, so a silly number can't make a huge page
@@ -160,6 +161,9 @@ def create_app(db_path=db.DEFAULT_DB_PATH):
             all_tags=active_tags + other_tags,
             toggle_link=toggle_link,
             filtering=bool(query or active_tags),
+            # After importing several recipes: /?imported=3&skipped=1 shows a note
+            imported=request.args.get("imported", type=int),
+            skipped=request.args.get("skipped", type=int),
         )
 
     @app.route("/recipes/<int:recipe_id>")
@@ -221,6 +225,75 @@ def create_app(db_path=db.DEFAULT_DB_PATH):
             db.delete_recipe(recipe_id, db_path=db_path)
             return redirect(url_for("index"))
         return render_template("recipe_delete.html", recipe=recipe)
+
+    # --- Import: paste JSON or give a link, check the preview, then save ---
+    # Nothing is saved until the Save button. The preview carries the recipes
+    # to the save step in a hidden form field, and they're checked again there.
+
+    def import_page(status=200, **values):
+        page = {
+            "json_text": "", "url": "", "errors": [], "url_error": "",
+            "preview": None, "notes": [], "prompt": importer.CLAUDE_PROMPT,
+        }
+        page.update(values)
+        return render_template("import.html", **page), status
+
+    def preview_page(recipes, json_text, notes=(), url="", errors=(), status=200):
+        existing = [r["name"] for r in db.list_recipes(db_path=db_path)]
+        return import_page(
+            status,
+            preview=recipes,
+            duplicates=importer.find_duplicates(recipes, existing),
+            recipes_json=importer.recipes_to_json(recipes),
+            json_text=json_text,
+            notes=list(notes),
+            url=url,
+            errors=list(errors),
+        )
+
+    @app.route("/import")
+    def import_recipes():
+        return import_page()
+
+    # Option A: pasted JSON
+    @app.route("/import/preview", methods=["POST"])
+    def import_preview():
+        json_text = request.form.get("json_text", "")
+        recipes, errors = importer.parse_json_text(json_text)
+        if errors:
+            return import_page(400, json_text=json_text, errors=errors)
+        return preview_page(recipes, json_text)
+
+    # Option B: a link to a recipe page. The JSON box is filled in too, so
+    # you can fix anything the page got wrong and preview again.
+    @app.route("/import/url", methods=["POST"])
+    def import_url():
+        url = request.form.get("url", "").strip()
+        try:
+            recipe, notes = importer.recipe_from_url(url)
+        except importer.ImportFailed as e:
+            return import_page(400, url=url, url_error=f"{e} {importer.URL_HELP}")
+        return preview_page([recipe], importer.recipes_to_json([recipe]), notes, url)
+
+    @app.route("/import/save", methods=["POST"])
+    def import_save():
+        recipes_json = request.form.get("recipes_json", "")
+        recipes, errors = importer.parse_json_text(recipes_json)
+        if errors:
+            return import_page(400, errors=errors)
+        # Duplicates are skipped unless their "Save anyway" box was ticked
+        save_anyway = {int(p) for p in request.form.getlist("save_anyway") if p.isdigit()}
+        saved_ids, skipped = importer.save_recipes(recipes, save_anyway, db_path=db_path)
+
+        if not saved_ids:
+            message = ("Nothing was saved: a recipe with this name already exists."
+                       if len(recipes) == 1 else
+                       "Nothing was saved: all of these recipes already exist.")
+            message += ' Tick "Save anyway" to save a copy.'
+            return preview_page(recipes, recipes_json, errors=[message], status=400)
+        if len(saved_ids) == 1:
+            return redirect(url_for("recipe_detail", recipe_id=saved_ids[0]))
+        return redirect(url_for("index", imported=len(saved_ids), skipped=len(skipped) or None))
 
     # Pick recipes for the week. Coming back from the grocery list keeps your
     # ticks and servings, because the same ?recipe=... values are in the URL.

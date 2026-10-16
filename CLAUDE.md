@@ -18,7 +18,7 @@ in plain language and keep code simple and readable.
    US/metric toggle, and merge compatible units in the grocery list
 2. (DONE) Grocery list polish: check-off boxes, group by aisle, copy as text
 3. (DONE) Home page search (name + ingredient) and clickable tag filter
-4. Recipe import: paste-JSON page (for output from a Claude chat) + import from a URL
+4. (DONE) Recipe import: paste-JSON page (for output from a Claude chat) + import from a URL
 5. Phone access: free cloud deploy with a simple password gate and recipe export/backup
 
 ## Rules
