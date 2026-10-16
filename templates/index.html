@@ -3,8 +3,18 @@
 {% block content %}
 <div class="page-head">
     <h1>My Recipes</h1>
-    <a href="{{ url_for('recipe_new') }}" class="button">+ Add recipe</a>
+    <div class="head-buttons">
+        <a href="{{ url_for('import_recipes') }}" class="button secondary">Import</a>
+        <a href="{{ url_for('recipe_new') }}" class="button">+ Add recipe</a>
+    </div>
 </div>
+
+{% if imported %}
+<p class="imported-note" role="status">
+    Imported {{ imported }} recipe{{ '' if imported == 1 else 's' }}.
+    {%- if skipped %} Skipped {{ skipped }} duplicate{{ '' if skipped == 1 else 's' }}.{% endif %}
+</p>
+{% endif %}
 
 {% if total %}
 {# A plain GET form: pressing Search goes to /?q=chick&tag=dinner, no JavaScript needed #}

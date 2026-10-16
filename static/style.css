@@ -478,3 +478,76 @@ legend {
     border-color: #2f6f4e;
     color: #fff;
 }
+
+/* --- Import page --- */
+
+.import-option {
+    margin-top: 1.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #ddd;
+}
+
+.json-box,
+.prompt-box textarea {
+    display: block;
+    width: 100%;
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    font-family: Consolas, Menlo, monospace;
+    font-size: 16px;        /* 16px stops iPhones zooming in when you tap a box */
+}
+
+.prompt-box {
+    margin-top: 1rem;
+}
+
+.prompt-box summary {
+    color: #2f6f4e;
+    cursor: pointer;
+}
+
+/* One recipe in the preview */
+.preview-card {
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+}
+
+.preview-card h3 {
+    margin: 0 0 0.25rem;
+}
+
+.preview-card h4 {
+    margin: 0.75rem 0 0.25rem;
+}
+
+.preview-card.duplicate {
+    border-color: #c77c00;
+}
+
+.duplicate-note {
+    padding: 0.5rem;
+    margin: 0.5rem 0;
+    border-radius: 4px;
+    background: #fff4e0;
+}
+
+.duplicate-note p {
+    margin: 0 0 0.25rem;
+}
+
+.imported-note {
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background: #e6f2ea;
+}
+
+/* Import + Add recipe buttons at the top of the home page */
+.head-buttons {
+    display: flex;
+    gap: 0.5rem;
+}

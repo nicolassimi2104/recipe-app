@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Import recipes - Recipe App{% endblock %}
+
+{% block content %}
+<h1>Import recipes</h1>
+
+{% if errors %}
+<div class="errors" role="alert">
+    {% for error in errors %}<p>{{ error }}</p>{% endfor %}
+</div>
+{% endif %}
+
+{% if preview %}
+{# Step 2: check what was read, then save. Nothing is saved before this. #}
+<section class="import-preview">
+    <h2>Check before saving</h2>
+    {% for note in notes %}<p class="scale-note">{{ note }}</p>{% endfor %}
+    <p class="hint">Want to fix something? Edit the JSON in box A below and press Preview again.</p>
+
+    <form method="post" action="{{ url_for('import_save') }}">
+        {# The recipes travel to the save step in this hidden field #}
+        <input type="hidden" name="recipes_json" value="{{ recipes_json }}">
+
+        {% for recipe in preview %}
+        {% set duplicate = loop.index0 in duplicates %}
+        <article class="preview-card{% if duplicate %} duplicate{% endif %}">
+            <h3>{{ recipe.name }}</h3>
+            {% if duplicate %}
+            <div class="duplicate-note">
+                <p>You already have a recipe called "{{ recipe.name }}", so this one will be skipped.</p>
+                <label><input type="checkbox" name="save_anyway" value="{{ loop.index0 }}"> Save anyway (as a second copy)</label>
+            </div>
+            {% endif %}
+            <div class="meta">
+                <span>Serves {{ recipe.servings }}</span>
+                {% for tag in recipe.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
+            </div>
+            <h4>Ingredients</h4>
+            <ul class="ingredients">
+                {% for ing in recipe.ingredients %}
+                <li>{{ [ing.amount, ing.unit, ing.name] | select | join(" ") }}</li>
+                {% else %}
+                <li class="hint">No ingredients</li>
+                {% endfor %}
+            </ul>
+            <h4>Steps</h4>
+            <ol class="steps">
+                {% for step in recipe.steps.splitlines() %}<li>{{ step }}</li>{% else %}<li class="hint">No steps</li>{% endfor %}
+            </ol>
+        </article>
+        {% endfor %}
+
+        <div class="actions">
+            <button type="submit" class="button">Save {{ "recipe" if preview|length == 1 else preview|length ~ " recipes" }}</button>
+            <a href="{{ url_for('import_recipes') }}" class="button secondary">Cancel</a>
+        </div>
+    </form>
+</section>
+{% endif %}
+
+<section class="import-option">
+    <h2>A. Paste JSON</h2>
+    <p class="hint">One recipe <code>{ ... }</code> or a list <code>[ ... ]</code>, in the same format as recipes.json.
+        Get it from a Claude chat with the prompt below.</p>
+    <form method="post" action="{{ url_for('import_preview') }}">
+        <textarea name="json_text" rows="10" class="json-box" aria-label="Recipe JSON"
+                  spellcheck="false" placeholder='{"name": "...", "servings": 4, "ingredients": [...], "steps": [...]}'>{{ json_text }}</textarea>
+        <button type="submit" class="button">Preview</button>
+    </form>
+
+    <details class="prompt-box">
+        <summary>Prompt for a Claude chat</summary>
+        <p class="hint">Copy this, paste it into a Claude chat, then add the recipe (text, a photo, or a link) after it.</p>
+        <div class="grocery-tools">
+            <button type="button" class="button secondary" id="copy-prompt">Copy prompt</button>
+            <span class="copy-status" id="copy-prompt-status" role="status"></span>
+        </div>
+        <textarea id="prompt-text" rows="12" readonly aria-label="Prompt for Claude">{{ prompt }}</textarea>
+    </details>
+</section>
+
+<section class="import-option">
+    <h2>B. From a link</h2>
+    <p class="hint">Works with most big recipe sites and many blogs.</p>
+    {% if url_error %}<div class="errors" role="alert"><p>{{ url_error }}</p></div>{% endif %}
+    <form method="post" action="{{ url_for('import_url') }}" class="search-form">
+        <input type="url" name="url" value="{{ url }}" placeholder="https://..." aria-label="Recipe link" required>
+        <button type="submit" class="button">Get recipe</button>
+    </form>
+</section>
+
+<script src="{{ url_for('static', filename='import.js') }}"></script>
+{% endblock %}
