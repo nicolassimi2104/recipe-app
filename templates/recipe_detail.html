@@ -10,8 +10,21 @@
 </div>
 
 <h2>Ingredients</h2>
+{# A plain GET form: pressing "Scale" reloads this page with ?servings=N in the URL #}
+<form method="get" class="scale-form">
+    <label for="servings">Servings</label>
+    <input type="number" id="servings" name="servings" value="{{ servings }}"
+           min="1" max="{{ max_servings }}" inputmode="numeric">
+    <button type="submit" class="button">Scale</button>
+</form>
+{% if servings != recipe.servings %}
+<p class="scale-note">
+    Scaled from {{ recipe.servings }} to {{ servings }} servings. Amounts in the steps are not scaled.
+    <a href="{{ url_for('recipe_detail', recipe_id=recipe.id) }}">Back to original</a>
+</p>
+{% endif %}
 <ul class="ingredients">
-    {% for ing in recipe.ingredients %}
+    {% for ing in ingredients %}
     {# "select" drops the blank parts, so "salt and pepper" with no amount has no extra spaces #}
     <li>{{ [ing.amount, ing.unit, ing.name] | select | join(" ") }}</li>
     {% endfor %}
