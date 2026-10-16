@@ -170,6 +170,13 @@ def test_scale_down_uses_fractions(client):
     assert "<li>1/8 small onion, diced</li>" in page       # 1/2 / 3 = 1/6 -> nearest 1/8
 
 
+def test_scaling_simplifies_units(client):
+    # Quiche has 2 tbsp cream cheese: doubled that's 4 tbsp = 1/4 cup
+    page = client.get("/recipes/1?servings=12").get_data(as_text=True)
+
+    assert "<li>1/4 cup cream cheese, softened</li>" in page
+
+
 @pytest.mark.parametrize("bad", ["abc", "0", "-3", "2.5", "", "99999", "²"])
 def test_bad_servings_fall_back_to_original(client, bad):
     response = client.get(f"/recipes/1?servings={bad}")
@@ -227,18 +234,18 @@ def test_grocery_list_scales_each_recipe(client):
     # Recipe 2 doubled (4 -> 8), recipe 3 as written
     page = client.get("/grocery?recipe=2&servings_2=8&recipe=3&servings_3=4").get_data(as_text=True)
 
-    assert "<span>28 oz mushrooms, sliced</span>" in page   # 20 + 8
-    assert "<span>8 tbsp butter</span>" in page
+    assert "<span>1 3/4 lb mushrooms, sliced</span>" in page   # 20 + 8 = 28 oz
+    assert "<span>1/2 cup butter</span>" in page               # 8 tbsp
     assert "(8 servings)" in page
 
 
 def test_grocery_list_rounds_up(client):
     # Quiche (serves 6) at 5 servings: 6 eggs x 5/6 = 5 exactly, but
-    # 1/2 cup cream x 5/6 = 5/12 (about 0.42), which rounds UP to 1/2
+    # 1/2 cup cream x 5/6 = 5/12 cup (6 2/3 tbsp), which rounds UP to 7 tbsp
     page = client.get("/grocery?recipe=1&servings_1=5").get_data(as_text=True)
 
     assert "<span>5 eggs</span>" in page
-    assert "<span>1/2 cup heavy cream</span>" in page
+    assert "<span>7 tbsp heavy cream</span>" in page
 
 
 def test_grocery_list_with_nothing_picked(client):
@@ -260,3 +267,63 @@ def test_grocery_list_handles_bad_input(client, query):
     if "recipe=2" in query:
         # Bad servings fall back to 4; a repeated recipe is only counted once
         assert "<span>10 oz mushrooms, sliced</span>" in page
+
+
+# --- US / Metric switch ---
+
+def test_detail_page_in_metric(client):
+    page = client.get("/recipes/1?units=metric").get_data(as_text=True)
+
+    assert "<li>120 ml heavy cream</li>" in page           # 1/2 cup
+    assert "<li>30 ml cream cheese, softened</li>" in page # 2 tbsp
+    assert "<li>6 eggs</li>" in page                       # counts stay as they are
+    assert "Converted to metric" in page
+
+
+def test_metric_and_scaling_together(client):
+    page = client.get("/recipes/1?servings=12&units=metric").get_data(as_text=True)
+
+    assert "<li>240 ml heavy cream</li>" in page           # 1 cup
+    assert "<li>12 eggs</li>" in page
+
+
+def test_us_is_the_default_and_bad_values_fall_back_to_it(client):
+    for query in ["", "?units=us", "?units=banana"]:
+        page = client.get(f"/recipes/1{query}").get_data(as_text=True)
+        assert "<li>1/2 cup heavy cream</li>" in page
+        assert "Converted to metric" not in page
+
+
+def test_scale_form_keeps_metric(client):
+    metric = client.get("/recipes/1?units=metric").get_data(as_text=True)
+    us = client.get("/recipes/1").get_data(as_text=True)
+
+    assert '<input type="hidden" name="units" value="metric">' in metric
+    assert 'name="units"' not in us
+
+
+def test_units_links_keep_servings(client):
+    page = client.get("/recipes/1?servings=12").get_data(as_text=True)
+
+    assert 'href="/recipes/1?servings=12&amp;units=metric"' in page
+    assert 'href="/recipes/1?servings=12" class="current"' in page
+
+
+def test_back_to_original_keeps_metric(client):
+    page = client.get("/recipes/1?servings=12&units=metric").get_data(as_text=True)
+
+    assert 'href="/recipes/1?units=metric">Back to original' in page
+
+
+def test_grocery_list_in_metric(client):
+    page = client.get("/grocery?recipe=2&servings_2=4&units=metric").get_data(as_text=True)
+
+    assert "<span>290 g mushrooms, sliced</span>" in page  # 10 oz, rounded up
+    assert "/recipes/2?servings=4&amp;units=metric" in page  # recipe links keep metric
+    assert 'href="/grocery?recipe=2&amp;servings_2=4">US</a>' in page  # switch back to US
+
+
+def test_plan_form_keeps_metric(client):
+    page = client.get("/plan?recipe=2&servings_2=8&units=metric").get_data(as_text=True)
+
+    assert '<input type="hidden" name="units" value="metric">' in page

@@ -10,13 +10,14 @@
 <ul class="picked-recipes">
     {% for recipe, servings in picks %}
     <li>
-        <a href="{{ url_for('recipe_detail', recipe_id=recipe.id, servings=servings) }}">{{ recipe.name }}</a>
+        <a href="{{ url_for('recipe_detail', recipe_id=recipe.id, servings=servings, units=metric_or_none(units)) }}">{{ recipe.name }}</a>
         ({{ servings }} servings)
     </li>
     {% endfor %}
 </ul>
 
 <h2>Shopping list</h2>
+{% include "_units_toggle.html" %}
 <p class="hint">Amounts are rounded up so you buy enough. Tap an item to tick it off.</p>
 <ul class="grocery-list">
     {% for item in items %}

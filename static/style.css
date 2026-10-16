@@ -328,3 +328,25 @@ legend {
     text-decoration: line-through;
     color: #888;
 }
+
+/* --- US / Metric switch --- */
+.units-toggle {
+    margin: 0 0 0.5rem;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.units-toggle a {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid #bbb;
+    border-radius: 999px;
+    text-decoration: none;
+    margin-left: 0.25rem;
+}
+
+.units-toggle a.current {
+    background: #2f6f4e;
+    border-color: #2f6f4e;
+    color: #fff;
+}

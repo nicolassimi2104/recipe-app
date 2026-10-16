@@ -3,11 +3,14 @@
 Run with:  python app.py   (then open http://localhost:5000)
 """
 
+from fractions import Fraction
+from urllib.parse import urlencode
+
 from flask import Flask, abort, redirect, render_template, request, url_for
 
 import db
 import grocery
-import scaling
+import units
 
 # Upper limit for the "scale to" box, so a silly number can't make a huge page
 MAX_SERVINGS = 1000
@@ -23,6 +26,26 @@ def requested_servings(text, original):
     if 1 <= servings <= MAX_SERVINGS:
         return servings
     return original
+
+
+# Read the ?units= value from the URL: "metric", or "us" for anything else
+# (including no value at all, so US is the default).
+def requested_units(text):
+    return "metric" if text == "metric" else "us"
+
+
+# Links for the US / Metric switch: the current page's URL with only the
+# units value changed, so servings and picked recipes are kept.
+def units_links(endpoint, **view_values):
+    links = {}
+    for system in ("us", "metric"):
+        args = request.args.copy()
+        args.pop("units", None)
+        if system == "metric":
+            args["units"] = "metric"   # US is the default, so it needs no value
+        query = urlencode(list(args.items(multi=True)))
+        links[system] = url_for(endpoint, **view_values) + ("?" + query if query else "")
+    return links
 
 
 def read_recipe_form(form):
@@ -73,6 +96,10 @@ def create_app(db_path=db.DEFAULT_DB_PATH):
     app = Flask(__name__)
     app.config["DB_PATH"] = db_path
 
+    # For links in templates: url_for leaves out values that are None, so this
+    # adds ?units=metric only when metric is on (US is the default).
+    app.jinja_env.globals["metric_or_none"] = lambda system: "metric" if system == "metric" else None
+
     db.init_db(db_path)
     db.import_seed_data(db_path)  # only does anything when there are no recipes yet
 
@@ -112,15 +139,15 @@ def create_app(db_path=db.DEFAULT_DB_PATH):
     def recipe_detail(recipe_id):
         recipe = get_recipe_or_404(recipe_id)
         servings = requested_servings(request.args.get("servings"), recipe["servings"])
+        system = requested_units(request.args.get("units"))
 
-        # Scaling only changes what's shown on this page, never what's saved.
-        # At the original servings we show the amounts exactly as typed.
+        # Scaling and unit conversion only change what's shown on this page,
+        # never what's saved. See units.show_ingredient for the rules.
+        factor = Fraction(servings, recipe["servings"])
         ingredients = []
         for ing in recipe["ingredients"]:
-            amount = ing["amount"]
-            if servings != recipe["servings"]:
-                amount = scaling.scale_amount(amount, recipe["servings"], servings)
-            ingredients.append(dict(ing, amount=amount))
+            amount, unit = units.show_ingredient(ing["amount"], ing["unit"], factor, system)
+            ingredients.append(dict(ing, amount=amount, unit=unit))
 
         return render_template(
             "recipe_detail.html",
@@ -128,6 +155,8 @@ def create_app(db_path=db.DEFAULT_DB_PATH):
             servings=servings,
             ingredients=ingredients,
             max_servings=MAX_SERVINGS,
+            units=system,
+            units_links=units_links("recipe_detail", recipe_id=recipe_id),
         )
 
     # GET shows the empty form; POST is what happens when you press "Save"
@@ -173,7 +202,11 @@ def create_app(db_path=db.DEFAULT_DB_PATH):
         recipes = db.list_recipes(db_path=db_path)
         picked = {recipe["id"]: servings for recipe, servings in read_picks(request.args)}
         return render_template(
-            "plan.html", recipes=recipes, picked=picked, max_servings=MAX_SERVINGS
+            "plan.html",
+            recipes=recipes,
+            picked=picked,
+            max_servings=MAX_SERVINGS,
+            units=requested_units(request.args.get("units")),
         )
 
     # The merged shopping list for the picked recipes. Nothing is saved:
@@ -181,8 +214,15 @@ def create_app(db_path=db.DEFAULT_DB_PATH):
     @app.route("/grocery")
     def grocery_list():
         picks = read_picks(request.args)
-        items = grocery.merge_ingredients(picks)
-        return render_template("grocery.html", picks=picks, items=items)
+        system = requested_units(request.args.get("units"))
+        items = grocery.merge_ingredients(picks, system)
+        return render_template(
+            "grocery.html",
+            picks=picks,
+            items=items,
+            units=system,
+            units_links=units_links("grocery_list"),
+        )
 
     return app
 
