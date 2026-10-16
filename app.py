@@ -130,10 +130,37 @@ def create_app(db_path=db.DEFAULT_DB_PATH):
 
     # --- Routes: each @app.route connects a URL to the function that handles it ---
 
+    # Home page with search and tag filter. The filter lives in the URL,
+    # e.g. /?q=chick&tag=dinner&tag=quick, so it survives a refresh and can be bookmarked.
     @app.route("/")
     def index():
-        recipes = db.list_recipes(db_path=db_path)
-        return render_template("index.html", recipes=recipes)
+        query = request.args.get("q", "").strip()
+        active_tags = db.parse_tags(",".join(request.args.getlist("tag")))
+        recipes = db.search_recipes(query, active_tags, db_path=db_path)
+
+        # Show active tags first (so they're visible when the pills scroll
+        # sideways on a phone), then the rest. An active tag that no recipe uses
+        # any more (old bookmark) still gets a pill so it can be clicked off.
+        other_tags = [t for t in db.list_tags(db_path=db_path) if t not in active_tags]
+
+        # Each pill is a link to this page with that one tag switched on or off
+        def toggle_link(tag):
+            if tag in active_tags:
+                new_tags = [t for t in active_tags if t != tag]
+            else:
+                new_tags = active_tags + [tag]
+            return url_for("index", q=query or None, tag=new_tags)
+
+        return render_template(
+            "index.html",
+            recipes=recipes,
+            total=db.count_recipes(db_path=db_path),
+            query=query,
+            active_tags=active_tags,
+            all_tags=active_tags + other_tags,
+            toggle_link=toggle_link,
+            filtering=bool(query or active_tags),
+        )
 
     @app.route("/recipes/<int:recipe_id>")
     def recipe_detail(recipe_id):

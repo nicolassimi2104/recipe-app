@@ -158,10 +158,89 @@ def get_recipe(recipe_id, db_path=DEFAULT_DB_PATH):
 
 def list_recipes(db_path=DEFAULT_DB_PATH):
     """Return all recipes (id, name, servings, tags), sorted by name."""
+    return search_recipes(db_path=db_path)
+
+
+def count_recipes(db_path=DEFAULT_DB_PATH):
+    """How many recipes there are in total."""
+    conn = get_connection(db_path)
+    try:
+        return conn.execute("SELECT COUNT(*) FROM recipes").fetchone()[0]
+    finally:
+        conn.close()
+
+
+def list_tags(db_path=DEFAULT_DB_PATH):
+    """Names of all tags used by at least one recipe, alphabetical."""
+    conn = get_connection(db_path)
+    try:
+        rows = conn.execute(
+            "SELECT DISTINCT tags.name FROM tags"
+            " JOIN recipe_tags ON recipe_tags.tag_id = tags.id ORDER BY tags.name"
+        )
+        return [row["name"] for row in rows]
+    finally:
+        conn.close()
+
+
+def _like_pattern(text):
+    """Turn "chick" into "%chick%" for a LIKE "contains" match.
+
+    % and _ are wildcards in LIKE, so if the user types them we escape them
+    (with a backslash) to mean the plain characters.
+    """
+    for special in ("\\", "%", "_"):
+        text = text.replace(special, "\\" + special)
+    return f"%{text}%"
+
+
+def search_recipes(query="", tags=(), db_path=DEFAULT_DB_PATH):
+    """Recipes matching a search and/or tags, sorted by name (same shape as list_recipes).
+
+    query: matches part of the recipe name OR any ingredient name, ignoring case.
+           Blank means "don't filter by text".
+    tags:  the recipe must have ALL of these tags. Empty means "don't filter by tag".
+    """
+    query = query.strip()
+    tags = parse_tags(",".join(tags))  # lowercase, trimmed, no duplicates
+
+    # Build the WHERE part piece by piece, only adding the filters that are in use.
+    # The ? placeholders are filled from params, so user text is never pasted into the SQL.
+    conditions = []
+    params = []
+    if query:
+        # LIKE ignores upper/lower case (for plain A-Z letters) in SQLite.
+        # EXISTS (...) is true if at least one ingredient of this recipe matches.
+        conditions.append(
+            "(recipes.name LIKE ? ESCAPE '\\'"
+            " OR EXISTS (SELECT 1 FROM ingredients"
+            "            WHERE ingredients.recipe_id = recipes.id"
+            "            AND ingredients.name LIKE ? ESCAPE '\\'))"
+        )
+        pattern = _like_pattern(query)
+        params += [pattern, pattern]
+    if tags:
+        # "Has all the tags": find recipes linked to any of the wanted tags, then
+        # keep only those where the number of matching tags equals how many we asked for.
+        placeholders = ", ".join("?" for _ in tags)
+        conditions.append(
+            "recipes.id IN (SELECT recipe_tags.recipe_id FROM recipe_tags"
+            "               JOIN tags ON tags.id = recipe_tags.tag_id"
+            f"              WHERE tags.name IN ({placeholders})"
+            "               GROUP BY recipe_tags.recipe_id"
+            "               HAVING COUNT(*) = ?)"
+        )
+        params += tags + [len(tags)]
+
+    sql = "SELECT id, name, servings FROM recipes"
+    if conditions:
+        sql += " WHERE " + " AND ".join(conditions)
+    sql += " ORDER BY name"
+
     conn = get_connection(db_path)
     try:
         recipes = []
-        for row in conn.execute("SELECT id, name, servings FROM recipes ORDER BY name"):
+        for row in conn.execute(sql, params):
             recipe = dict(row)
             recipe["tags"] = _tags_for(conn, recipe["id"])
             recipes.append(recipe)

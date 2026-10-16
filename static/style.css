@@ -146,6 +146,87 @@ a {
     font-size: 0.8rem;
 }
 
+a.tag {
+    text-decoration: none;
+}
+
+.tag.active {
+    background: #2f6f4e;
+    color: #fff;
+}
+
+/* --- Search and tag filter on the home page --- */
+
+/* Search box stretches, button stays its own size */
+.search-form {
+    display: flex;
+    gap: 0.5rem;
+    margin: 0.75rem 0 0.5rem;
+}
+
+.search-form input {
+    flex: 1;
+    min-width: 0;           /* lets the box shrink on narrow phones */
+    padding: 0.5rem;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    font: inherit;          /* also stops iPhones zooming in when you tap a box */
+}
+
+/* Tag pills wrap onto more lines on wide screens... */
+.tag-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+}
+
+.tag-pill {
+    flex: none;
+    padding: 0.3rem 0.75rem;   /* big enough to tap */
+    border: 1px solid #2f6f4e;
+    border-radius: 999px;
+    background: #fff;
+    color: #2f6f4e;
+    font-size: 0.9rem;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.tag-pill.active {
+    background: #2f6f4e;
+    color: #fff;
+}
+
+/* ...but on phones they sit in one row you swipe sideways, so a long tag
+   list doesn't push the recipes off the screen */
+@media (max-width: 600px) {
+    .tag-filter {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 0.4rem;     /* room for the scrollbar */
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+.match-count {
+    margin: 0.25rem 0 0.5rem;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.no-results {
+    padding: 1rem;
+    border: 1px dashed #bbb;
+    border-radius: 6px;
+    background: #fff;
+    text-align: center;
+}
+
+.no-results p {
+    margin: 0.25rem 0;
+}
+
 /* --- Detail page --- */
 
 .ingredients li,

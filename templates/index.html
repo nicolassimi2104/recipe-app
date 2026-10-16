@@ -6,6 +6,38 @@
     <a href="{{ url_for('recipe_new') }}" class="button">+ Add recipe</a>
 </div>
 
+{% if total %}
+{# A plain GET form: pressing Search goes to /?q=chick&tag=dinner, no JavaScript needed #}
+<form method="get" action="{{ url_for('index') }}" class="search-form" role="search">
+    <input type="search" name="q" value="{{ query }}" placeholder="Search name or ingredient"
+           aria-label="Search recipes by name or ingredient">
+    {# Keep the selected tags when searching #}
+    {% for tag in active_tags %}<input type="hidden" name="tag" value="{{ tag }}">{% endfor %}
+    <button type="submit" class="button">Search</button>
+</form>
+
+{% if all_tags %}
+<nav class="tag-filter" aria-label="Filter by tag">
+    {% for tag in all_tags %}
+    {% set active = tag in active_tags %}
+    <a href="{{ toggle_link(tag) }}" class="tag-pill{% if active %} active{% endif %}"
+       {% if active %}aria-current="true" title="Remove this filter"{% endif %}>
+        {{ tag }}{% if active %} &times;{% endif %}
+    </a>
+    {% endfor %}
+</nav>
+{% endif %}
+
+<p class="match-count">
+    {% if filtering %}
+    {{ recipes|length }} of {{ total }} recipe{{ '' if total == 1 else 's' }}
+    &middot; <a href="{{ url_for('index') }}">Clear filters</a>
+    {% else %}
+    {{ total }} recipe{{ '' if total == 1 else 's' }}
+    {% endif %}
+</p>
+{% endif %}
+
 {% if recipes %}
 <ul class="recipe-list">
     {% for recipe in recipes %}
@@ -13,11 +45,18 @@
         <a href="{{ url_for('recipe_detail', recipe_id=recipe.id) }}" class="recipe-name">{{ recipe.name }}</a>
         <div class="meta">
             <span>Serves {{ recipe.servings }}</span>
-            {% for tag in recipe.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
+            {% for tag in recipe.tags %}<a href="{{ toggle_link(tag) }}" class="tag{% if tag in active_tags %} active{% endif %}">{{ tag }}</a>{% endfor %}
         </div>
     </li>
     {% endfor %}
 </ul>
+{% elif filtering %}
+<div class="no-results">
+    <p>No recipes match
+        {%- if query %} "{{ query }}"{% endif %}
+        {%- if active_tags %} with tag{{ '' if active_tags|length == 1 else 's' }} {{ active_tags|join(', ') }}{% endif %}.</p>
+    <p><a href="{{ url_for('index') }}">Clear filters</a> to see all recipes.</p>
+</div>
 {% else %}
 <p>No recipes yet. Add your first one!</p>
 {% endif %}
