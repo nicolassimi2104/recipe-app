@@ -4,6 +4,7 @@ from fractions import Fraction
 
 import pytest
 
+import grocery
 from grocery import merge_ingredients
 from scaling import format_amount
 
@@ -179,3 +180,100 @@ def test_list_is_sorted_by_name():
 
 def test_nothing_picked_gives_empty_list():
     assert merge_ingredients([]) == []
+
+
+# --- Aisles ---
+
+@pytest.mark.parametrize(
+    "name, aisle",
+    [
+        ("large onion, sliced", "Produce"),
+        ("Mushrooms, sliced", "Produce"),          # capitals and plurals
+        ("garlic cloves, minced", "Produce"),
+        ("diced ham", "Meat & Seafood"),
+        ("chicken thighs or breasts", "Meat & Seafood"),
+        ("heavy cream", "Dairy & Eggs"),
+        ("eggs", "Dairy & Eggs"),
+        ("non-fat or 2% Greek yogurt", "Dairy & Eggs"),  # numbers and dashes ignored
+        ("cream cheese, softened", "Dairy & Eggs"),
+        # Tricky ones: a longer phrase beats a single word
+        ("peanut butter", "Pantry"),               # not Dairy because of "butter"
+        ("chicken broth", "Pantry"),               # not Meat because of "chicken"
+        ("garlic powder", "Spices"),               # not Produce because of "garlic"
+        ("coconut milk", "Pantry"),                # not Dairy because of "milk"
+        # Same length: the later word is the main thing
+        ("egg noodles", "Pantry"),
+        ("honey or maple syrup", "Pantry"),
+        ("salt and pepper", "Spices"),
+        ("frozen peas", "Frozen"),                 # "frozen" always wins
+        ("dragon fruit", "Other"),                 # nothing matches
+        ("", "Other"),
+    ],
+)
+def test_aisle_for(name, aisle):
+    assert grocery.aisle_for(name) == aisle
+
+
+def test_keywords_match_whole_words_only():
+    # "ham" is inside "graham" but graham crackers aren't meat
+    assert grocery.aisle_for("graham crackers") == "Other"
+
+
+def test_every_keyword_aisle_is_a_real_aisle():
+    assert set(grocery.AISLE_KEYWORDS) <= set(grocery.AISLES)
+
+
+def item(amount, unit, name):
+    return {"amount": amount, "unit": unit, "name": name}
+
+
+def test_group_by_aisle_keeps_aisle_order_and_skips_empty_aisles():
+    items = [item("1", "tsp", "salt"), item("2", "", "eggs"), item("1", "", "onion")]
+
+    groups = grocery.group_by_aisle(items)
+
+    assert [aisle for aisle, _ in groups] == ["Produce", "Dairy & Eggs", "Spices"]
+    assert groups[0][1] == [{"amount": "1", "unit": "", "name": "onion", "key": "onion"}]
+
+
+def test_group_by_aisle_gives_repeated_names_different_keys():
+    # Butter by volume and by weight can't merge, so it's on the list twice
+    items = [item("1", "cup", "Butter"), item("8", "oz", "butter")]
+
+    [(aisle, butter)] = grocery.group_by_aisle(items)
+
+    assert [b["key"] for b in butter] == ["butter", "butter#2"]
+
+
+# --- Copy as text ---
+
+def test_grocery_text_groups_by_aisle():
+    groups = grocery.group_by_aisle(
+        [item("2", "", "eggs"), item("1 1/2", "cup", "butter"), item("", "", "salt"), item("1", "", "onion")]
+    )
+
+    assert grocery.grocery_text(groups) == (
+        "Produce\n"
+        "- 1 onion\n"
+        "\n"
+        "Dairy & Eggs\n"
+        "- 2 eggs\n"
+        "- 1 1/2 cup butter\n"
+        "\n"
+        "Spices\n"
+        "- salt"                      # no amount: just the name
+    )
+
+
+def test_grocery_text_leaves_out_checked_items_and_empty_aisles():
+    groups = grocery.group_by_aisle([item("2", "", "eggs"), item("1", "", "onion"), item("1", "", "lemon")])
+
+    text = grocery.grocery_text(groups, checked={"eggs", "lemon"})
+
+    assert text == "Produce\n- 1 onion"
+
+
+def test_grocery_text_everything_checked_is_empty():
+    groups = grocery.group_by_aisle([item("2", "", "eggs")])
+
+    assert grocery.grocery_text(groups, checked={"eggs"}) == ""
