@@ -188,3 +188,75 @@ def test_detail_page_without_servings_shows_scale_box(client):
     assert 'name="servings" value="6"' in page
     assert "Scale</button>" in page
     assert "Scaled from" not in page
+
+
+# --- Plan week and grocery list ---
+# Seed ids: 1 quiche (serves 6), 2 mushroom chicken (4), 3 stroganoff (4), 4 parfait (5).
+
+def test_header_links_to_plan_page(client):
+    assert 'href="/plan"' in client.get("/").get_data(as_text=True)
+
+
+def test_plan_page_lists_recipes_with_checkboxes(client):
+    page = client.get("/plan").get_data(as_text=True)
+
+    assert "Chicken Stroganoff" in page
+    assert page.count('type="checkbox" name="recipe"') == 4
+    assert 'name="servings_1"' in page
+    assert "Make grocery list" in page
+
+
+def test_plan_page_remembers_picks(client):
+    page = client.get("/plan?recipe=2&servings_2=8").get_data(as_text=True)
+
+    assert 'name="recipe" value="2" checked' in page
+    assert 'name="recipe" value="1">' in page              # not ticked
+    assert 'name="servings_2" value="8"' in page
+
+
+def test_grocery_list_merges_shared_ingredients(client):
+    page = client.get("/grocery?recipe=2&servings_2=4&recipe=3&servings_3=4").get_data(as_text=True)
+
+    assert "<span>18 oz mushrooms, sliced</span>" in page   # 10 + 8
+    assert "<span>1 tsp salt</span>" in page
+    assert "<span>egg noodles</span>" in page              # no amount: shown once
+    assert page.count("mushrooms, sliced") == 1
+
+
+def test_grocery_list_scales_each_recipe(client):
+    # Recipe 2 doubled (4 -> 8), recipe 3 as written
+    page = client.get("/grocery?recipe=2&servings_2=8&recipe=3&servings_3=4").get_data(as_text=True)
+
+    assert "<span>28 oz mushrooms, sliced</span>" in page   # 20 + 8
+    assert "<span>8 tbsp butter</span>" in page
+    assert "(8 servings)" in page
+
+
+def test_grocery_list_rounds_up(client):
+    # Quiche (serves 6) at 5 servings: 6 eggs x 5/6 = 5 exactly, but
+    # 1/2 cup cream x 5/6 = 5/12 (about 0.42), which rounds UP to 1/2
+    page = client.get("/grocery?recipe=1&servings_1=5").get_data(as_text=True)
+
+    assert "<span>5 eggs</span>" in page
+    assert "<span>1/2 cup heavy cream</span>" in page
+
+
+def test_grocery_list_with_nothing_picked(client):
+    response = client.get("/grocery")
+
+    assert response.status_code == 200
+    assert "No recipes picked yet." in response.get_data(as_text=True)
+
+
+@pytest.mark.parametrize(
+    "query",
+    ["recipe=abc", "recipe=999", "recipe=2&servings_2=abc", "recipe=2&recipe=2", "recipe=2&servings_2=0"],
+)
+def test_grocery_list_handles_bad_input(client, query):
+    response = client.get(f"/grocery?{query}")
+
+    assert response.status_code == 200
+    page = response.get_data(as_text=True)
+    if "recipe=2" in query:
+        # Bad servings fall back to 4; a repeated recipe is only counted once
+        assert "<span>10 oz mushrooms, sliced</span>" in page

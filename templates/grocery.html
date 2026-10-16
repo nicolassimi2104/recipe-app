@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Grocery list - Recipe App{% endblock %}
+
+{% block content %}
+<h1>Grocery list</h1>
+
+{% if picks %}
+<h2>Recipes this week</h2>
+<ul class="picked-recipes">
+    {% for recipe, servings in picks %}
+    <li>
+        <a href="{{ url_for('recipe_detail', recipe_id=recipe.id, servings=servings) }}">{{ recipe.name }}</a>
+        ({{ servings }} servings)
+    </li>
+    {% endfor %}
+</ul>
+
+<h2>Shopping list</h2>
+<p class="hint">Amounts are rounded up so you buy enough. Tap an item to tick it off.</p>
+<ul class="grocery-list">
+    {% for item in items %}
+    {# A checkbox inside a label: tapping the text ticks it, no JavaScript needed #}
+    <li>
+        <label>
+            <input type="checkbox">
+            <span>{{ [item.amount, item.unit, item.name] | select | join(" ") }}</span>
+        </label>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p>No recipes picked yet.</p>
+{% endif %}
+
+<div class="actions">
+    {# request.query_string keeps the current picks, so the ticks come back #}
+    <a href="{{ url_for('plan') }}?{{ request.query_string.decode() }}" class="button secondary">Change recipes</a>
+</div>
+{% endblock %}
