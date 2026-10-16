@@ -6,6 +6,22 @@ Run with:  python app.py   (then open http://localhost:5000)
 from flask import Flask, abort, redirect, render_template, request, url_for
 
 import db
+import scaling
+
+# Upper limit for the "scale to" box, so a silly number can't make a huge page
+MAX_SERVINGS = 1000
+
+
+# Read the ?servings=N value from the URL. Anything missing, not a whole
+# number, below 1 or above MAX_SERVINGS falls back to the recipe's own servings.
+def requested_servings(text, original):
+    try:
+        servings = int(text)
+    except (TypeError, ValueError):
+        return original
+    if 1 <= servings <= MAX_SERVINGS:
+        return servings
+    return original
 
 
 def read_recipe_form(form):
@@ -75,7 +91,24 @@ def create_app(db_path=db.DEFAULT_DB_PATH):
     @app.route("/recipes/<int:recipe_id>")
     def recipe_detail(recipe_id):
         recipe = get_recipe_or_404(recipe_id)
-        return render_template("recipe_detail.html", recipe=recipe)
+        servings = requested_servings(request.args.get("servings"), recipe["servings"])
+
+        # Scaling only changes what's shown on this page, never what's saved.
+        # At the original servings we show the amounts exactly as typed.
+        ingredients = []
+        for ing in recipe["ingredients"]:
+            amount = ing["amount"]
+            if servings != recipe["servings"]:
+                amount = scaling.scale_amount(amount, recipe["servings"], servings)
+            ingredients.append(dict(ing, amount=amount))
+
+        return render_template(
+            "recipe_detail.html",
+            recipe=recipe,
+            servings=servings,
+            ingredients=ingredients,
+            max_servings=MAX_SERVINGS,
+        )
 
     # GET shows the empty form; POST is what happens when you press "Save"
     @app.route("/recipes/new", methods=["GET", "POST"])

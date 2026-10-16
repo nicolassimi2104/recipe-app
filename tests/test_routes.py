@@ -136,3 +136,55 @@ def test_restarting_app_does_not_duplicate_seed(db_path):
     create_app(db_path=db_path)  # second start
 
     assert len(db.list_recipes(db_path=db_path)) == 4
+
+
+# --- Scaling on the detail page ---
+# Recipe 1 is the first seed recipe: the quiche, which serves 6.
+
+def test_scale_recipe_to_12_servings(client, db_path):
+    page = client.get("/recipes/1?servings=12").get_data(as_text=True)
+
+    assert "Ham, Spinach &amp; Onion Quiche" in page
+    assert "<li>12 eggs</li>" in page                      # 6 doubled
+    assert "<li>1 cup heavy cream</li>" in page            # 1/2 doubled
+    assert "<li>1 1/2 cup shredded cheese" in page         # 3/4 doubled
+    assert "<li>1 small onion, diced</li>" in page         # 1/2 doubled
+    assert "<li>salt and pepper</li>" in page              # no amount: unchanged
+    assert "Scaled from 6 to 12 servings" in page
+    assert 'name="servings" value="12"' in page
+
+
+def test_scaling_does_not_change_saved_recipe(client, db_path):
+    client.get("/recipes/1?servings=12")
+
+    recipe = db.get_recipe(1, db_path=db_path)
+    assert recipe["servings"] == 6
+    assert recipe["ingredients"][1]["amount"] == "1/2"
+
+
+def test_scale_down_uses_fractions(client):
+    page = client.get("/recipes/1?servings=2").get_data(as_text=True)
+
+    assert "<li>2 eggs</li>" in page                       # 6 / 3
+    assert "<li>1/4 cup shredded cheese" in page           # 3/4 / 3
+    assert "<li>1/8 small onion, diced</li>" in page       # 1/2 / 3 = 1/6 -> nearest 1/8
+
+
+@pytest.mark.parametrize("bad", ["abc", "0", "-3", "2.5", "", "99999", "²"])
+def test_bad_servings_fall_back_to_original(client, bad):
+    response = client.get(f"/recipes/1?servings={bad}")
+
+    assert response.status_code == 200
+    page = response.get_data(as_text=True)
+    assert "<li>6 eggs</li>" in page
+    assert "<li>1/2 cup heavy cream</li>" in page
+    assert 'name="servings" value="6"' in page
+    assert "Scaled from" not in page
+
+
+def test_detail_page_without_servings_shows_scale_box(client):
+    page = client.get("/recipes/1").get_data(as_text=True)
+
+    assert 'name="servings" value="6"' in page
+    assert "Scale</button>" in page
+    assert "Scaled from" not in page

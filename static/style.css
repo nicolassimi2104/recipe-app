@@ -136,6 +136,31 @@ a {
     margin-bottom: 0.4rem;
 }
 
+/* "Servings [ 8 ] [Scale]" row above the ingredient list */
+.scale-form {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.scale-form label {
+    font-weight: bold;
+}
+
+.scale-form input {
+    width: 5rem;
+    padding: 0.5rem;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    font: inherit;          /* also stops iPhones zooming in when you tap a box */
+}
+
+.scale-note {
+    margin: 0.5rem 0 0;
+    color: #555;
+    font-size: 0.9rem;
+}
+
 /* --- Add/edit form --- */
 
 .recipe-form label {
