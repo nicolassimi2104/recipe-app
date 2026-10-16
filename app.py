@@ -1,12 +1,26 @@
 """Recipe app: the Flask web server.
 
 Run with:  python app.py   (then open http://localhost:5000)
+
+Settings come from environment variables, so nothing secret is in the code.
+None of them are needed for local use:
+    APP_PASSWORD  if set, every page asks for this password first (for the hosted copy)
+    SECRET_KEY    signs the login cookie; required when APP_PASSWORD is set
+    DB_PATH       where the SQLite file lives (default: recipes.db next to this file)
+    PORT          port for "python app.py" (default: 5000)
+    SESSION_COOKIE_SECURE=1  only send the login cookie over https (set this when hosted)
 """
 
+import hmac
+import json
+import os
+import secrets
+from datetime import date, timedelta
 from fractions import Fraction
 from urllib.parse import urlencode
 
-from flask import Flask, abort, redirect, render_template, request, url_for
+from flask import (Flask, Response, abort, redirect, render_template, request,
+                   session, url_for)
 
 import db
 import grocery
@@ -92,10 +106,35 @@ def read_recipe_form(form):
     return recipe, errors
 
 
-def create_app(db_path=db.DEFAULT_DB_PATH):
+# Only follow ?next=... if it's a page on this site ("/plan"), never another
+# website ("https://evil.example" or "//evil.example"), so the login page
+# can't be used to send someone elsewhere.
+def safe_next(target):
+    if target and target.startswith("/") and not target.startswith("//") and "\\" not in target:
+        return target
+    return url_for("index")
+
+
+def create_app(db_path=None):
     """Build the Flask app. Tests pass a different db_path to use a temp database."""
+    if db_path is None:
+        db_path = os.environ.get("DB_PATH") or db.DEFAULT_DB_PATH
+
     app = Flask(__name__)
     app.config["DB_PATH"] = db_path
+
+    # --- Password gate (only switched on when APP_PASSWORD is set) ---
+    password = os.environ.get("APP_PASSWORD", "")
+    secret_key = os.environ.get("SECRET_KEY", "")
+    if password and not secret_key:
+        # Without a fixed key, everyone would be logged out on every restart,
+        # and a missing setting is better caught now than on the phone later.
+        raise RuntimeError("APP_PASSWORD is set, so SECRET_KEY must be set too. See DEPLOY.md.")
+    # Locally (no password) a random key is fine: the login cookie isn't used
+    app.config["SECRET_KEY"] = secret_key or secrets.token_hex(32)
+    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)  # stay logged in on your phone
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"   # other websites can't post forms as you
+    app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE") == "1"
 
     # For links in templates: url_for leaves out values that are None, so this
     # adds ?units=metric only when metric is on (US is the default).
@@ -128,6 +167,44 @@ def create_app(db_path=db.DEFAULT_DB_PATH):
             servings = requested_servings(args.get(f"servings_{recipe_id}"), recipe["servings"])
             picks.append((recipe, servings))
         return picks
+
+    # Templates use this to show the "Log out" link only when there's a password
+    @app.context_processor
+    def login_info():
+        return {"password_on": bool(password)}
+
+    # Runs before every page. With a password set, anyone not logged in is sent
+    # to /login (the login page itself and the CSS are let through).
+    @app.before_request
+    def require_login():
+        if not password or request.endpoint in ("login", "static"):
+            return None
+        if session.get("logged_in"):
+            return None
+        return redirect(url_for("login", next=request.full_path.rstrip("?")))
+
+    @app.route("/login", methods=["GET", "POST"])
+    def login():
+        if not password:
+            return redirect(url_for("index"))  # no password set: nothing to log in to
+        next_page = request.values.get("next", "")
+        error = ""
+        if request.method == "POST":
+            given = request.form.get("password", "")
+            # compare_digest takes the same time whether the first letter or the
+            # last one is wrong, so timing can't leak the password bit by bit
+            if hmac.compare_digest(given.encode("utf-8"), password.encode("utf-8")):
+                session.clear()
+                session["logged_in"] = True
+                session.permanent = True   # keep the cookie for 30 days
+                return redirect(safe_next(next_page))
+            error = "That password isn't right. Try again."
+        return render_template("login.html", error=error, next_page=next_page), (401 if error else 200)
+
+    @app.route("/logout")
+    def logout():
+        session.clear()
+        return redirect(url_for("login") if password else url_for("index"))
 
     # --- Routes: each @app.route connects a URL to the function that handles it ---
 
@@ -295,6 +372,21 @@ def create_app(db_path=db.DEFAULT_DB_PATH):
             return redirect(url_for("recipe_detail", recipe_id=saved_ids[0]))
         return redirect(url_for("index", imported=len(saved_ids), skipped=len(skipped) or None))
 
+    # Download every recipe as one JSON file, in the same format the import
+    # page reads, so it works as a backup and to move recipes between copies.
+    @app.route("/export")
+    def export_recipes():
+        recipes = [db.get_recipe(r["id"], db_path=db_path) for r in db.list_recipes(db_path=db_path)]
+        data = [importer.to_json_format(r) for r in recipes]
+        text = json.dumps(data, indent=2, ensure_ascii=False)
+        filename = f"recipes-{date.today().isoformat()}.json"
+        return Response(
+            text,
+            mimetype="application/json",
+            # "attachment" makes the browser save it as a file instead of showing it
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
     # Pick recipes for the week. Coming back from the grocery list keeps your
     # ticks and servings, because the same ?recipe=... values are in the URL.
     @app.route("/plan")
@@ -329,4 +421,6 @@ def create_app(db_path=db.DEFAULT_DB_PATH):
 
 
 if __name__ == "__main__":
-    create_app().run(debug=True, port=5000)
+    # Only for running on your own computer. The hosted copy loads the app
+    # through wsgi.py instead, so this line (and debug mode) never runs there.
+    create_app().run(debug=True, port=int(os.environ.get("PORT", 5000)))

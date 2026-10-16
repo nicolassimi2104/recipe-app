@@ -551,3 +551,24 @@ legend {
     display: flex;
     gap: 0.5rem;
 }
+
+/* --- Login page --- */
+
+.login-box {
+    max-width: 22rem;
+    margin: 2rem auto;
+}
+
+.login-box input {
+    display: block;
+    width: 100%;
+    margin: 0.25rem 0 1rem;
+    padding: 0.6rem;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    font: inherit;          /* also stops iPhones zooming in when you tap the box */
+}
+
+.login-box .button {
+    width: 100%;
+}

@@ -14,6 +14,7 @@
             <a href="{{ url_for('index') }}">Recipes</a>
             <a href="{{ url_for('plan') }}">Plan week</a>
             <a href="{{ url_for('import_recipes') }}">Import</a>
+            {% if password_on and session.logged_in %}<a href="{{ url_for('logout') }}">Log out</a>{% endif %}
         </nav>
     </header>
     <main>

@@ -90,5 +90,12 @@
     </form>
 </section>
 
+<section class="import-option" id="backup">
+    <h2>Back up your recipes</h2>
+    <p class="hint">Downloads every recipe as one JSON file. To restore it, or to copy your recipes
+        to another copy of this app, open the file, copy all of it, and paste it into box A above.</p>
+    <a href="{{ url_for('export_recipes') }}" class="button secondary">Download all recipes</a>
+</section>
+
 <script src="{{ url_for('static', filename='import.js') }}"></script>
 {% endblock %}

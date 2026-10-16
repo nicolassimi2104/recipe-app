@@ -11,3 +11,6 @@ __pycache__/
 
 # The SQLite database is created by the app, so don't commit it
 recipes.db
+
+# Secrets (passwords, keys) live in .env on the server only, never in git
+.env
