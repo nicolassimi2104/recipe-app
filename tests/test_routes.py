@@ -352,3 +352,62 @@ def test_grocery_list_has_tick_keys_copy_and_clear(client):
     assert "grocery.js" in page
     # The text box starts with the full list (no JavaScript needed to read it)
     assert "Meat &amp; Seafood\n- " in page
+
+
+# --- Home page search and tag filter ---
+
+def test_home_search_by_name_and_ingredient(client):
+    # "stroganoff" is in a name; "noodles" only in Chicken Stroganoff's ingredients
+    for q in ("stroganoff", "NOODLES"):
+        page = client.get("/", query_string={"q": q}).get_data(as_text=True)
+        assert "Chicken Stroganoff" in page
+        assert "Mushroom Butter Sauce" not in page
+        assert "1 of 4 recipes" in page
+        assert f'value="{q}"' in page  # search box keeps what you typed
+
+
+def test_home_multi_tag_and_search_through_query_params(client):
+    page = client.get("/?q=chick&tag=dinner&tag=one-pan").get_data(as_text=True)
+
+    assert "Mushroom Butter Sauce Chicken &amp; Potatoes" in page
+    assert "Chicken Stroganoff" not in page   # dinner + chicken, but not one-pan
+    assert "1 of 4 recipes" in page
+    assert "Clear filters" in page
+    # Active tags are kept in the search form as hidden fields
+    assert '<input type="hidden" name="tag" value="dinner">' in page
+    assert '<input type="hidden" name="tag" value="one-pan">' in page
+
+
+def test_home_tag_pills_toggle_on_and_off(client):
+    page = client.get("/?q=chick&tag=dinner").get_data(as_text=True)
+
+    # Clicking an inactive pill adds it, keeping the search and other tags
+    assert 'href="/?q=chick&amp;tag=dinner&amp;tag=quick"' in page
+    # Clicking the active pill removes it (and only it)
+    assert 'href="/?q=chick"' in page
+    assert 'class="tag-pill active"' in page
+
+
+def test_home_no_results_message(client):
+    page = client.get("/?q=tofu&tag=breakfast").get_data(as_text=True)
+
+    assert "0 of 4 recipes" in page
+    assert 'No recipes match "tofu" with tag breakfast.' in page
+    assert "Clear filters" in page
+
+
+def test_home_without_filters_has_no_clear_link(client):
+    page = client.get("/").get_data(as_text=True)
+
+    assert "4 recipes" in page
+    assert "Clear filters" not in page
+
+
+def test_plan_page_unaffected_by_home_filters(client, db_path):
+    # The plan page always lists every recipe and keeps its ticks,
+    # even if filter values end up in its URL
+    recipe_id = find_recipe_id(db_path, "Chicken Stroganoff")
+    page = client.get(f"/plan?q=tofu&tag=breakfast&recipe={recipe_id}").get_data(as_text=True)
+
+    assert "Greek Yogurt Protein Parfait Bowls" in page
+    assert f'value="{recipe_id}" checked' in page
