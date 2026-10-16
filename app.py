@@ -215,11 +215,12 @@ def create_app(db_path=db.DEFAULT_DB_PATH):
     def grocery_list():
         picks = read_picks(request.args)
         system = requested_units(request.args.get("units"))
-        items = grocery.merge_ingredients(picks, system)
+        groups = grocery.group_by_aisle(grocery.merge_ingredients(picks, system))
         return render_template(
             "grocery.html",
             picks=picks,
-            items=items,
+            groups=groups,
+            list_text=grocery.grocery_text(groups),
             units=system,
             units_links=units_links("grocery_list"),
         )

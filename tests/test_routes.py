@@ -227,7 +227,7 @@ def test_grocery_list_merges_shared_ingredients(client):
     assert "<span>18 oz mushrooms, sliced</span>" in page   # 10 + 8
     assert "<span>1 tsp salt</span>" in page
     assert "<span>egg noodles</span>" in page              # no amount: shown once
-    assert page.count("mushrooms, sliced") == 1
+    assert page.count("mushrooms, sliced</span>") == 1      # one line on the list
 
 
 def test_grocery_list_scales_each_recipe(client):
@@ -327,3 +327,28 @@ def test_plan_form_keeps_metric(client):
     page = client.get("/plan?recipe=2&servings_2=8&units=metric").get_data(as_text=True)
 
     assert '<input type="hidden" name="units" value="metric">' in page
+
+
+# --- Grocery list polish: aisles, ticks, copy as text ---
+
+def test_grocery_list_has_aisle_headings_in_order(client):
+    page = client.get("/grocery?recipe=1&servings_1=6").get_data(as_text=True)   # quiche
+
+    produce = page.index("<h3>Produce</h3>")
+    dairy = page.index("<h3>Dairy &amp; Eggs</h3>")
+    meat = page.index("<h3>Meat &amp; Seafood</h3>")
+    assert produce < dairy < meat
+    assert "<h3>Frozen</h3>" not in page                   # empty aisles are hidden
+    # diced ham is under the Meat heading
+    assert page.index("diced ham") > meat
+
+
+def test_grocery_list_has_tick_keys_copy_and_clear(client):
+    page = client.get("/grocery?recipe=1&servings_1=6").get_data(as_text=True)
+
+    assert 'data-key="diced ham"' in page
+    assert "Copy as text" in page
+    assert "Clear checks" in page
+    assert "grocery.js" in page
+    # The text box starts with the full list (no JavaScript needed to read it)
+    assert "Meat &amp; Seafood\n- " in page
