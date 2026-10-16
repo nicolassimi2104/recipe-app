@@ -323,10 +323,57 @@ legend {
     cursor: pointer;
 }
 
-/* Ticked items get crossed out */
+/* Ticked items get crossed out and greyed */
 .grocery-list input:checked + span {
     text-decoration: line-through;
     color: #888;
+}
+
+.grocery-list li:has(input:checked) {
+    background: #f0f0f0;    /* grey card too, in browsers that support :has */
+}
+
+/* Aisle headings: small, green, with a line under them */
+.aisle h3 {
+    margin: 1rem 0 0.4rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid #ddd;
+    color: #2f6f4e;
+    font-size: 1rem;
+}
+
+/* Copy / Clear buttons, wrapping on narrow phones */
+.grocery-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.75rem 0;
+}
+
+.copy-status {
+    color: #2f6f4e;
+    font-size: 0.9rem;
+}
+
+/* "Show list as text" box (also the fallback when copying isn't allowed) */
+.list-text {
+    margin-top: 1rem;
+}
+
+.list-text summary {
+    color: #2f6f4e;
+    cursor: pointer;
+}
+
+.list-text textarea {
+    display: block;
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    font: inherit;          /* also stops iPhones zooming in when you tap a box */
 }
 
 /* --- US / Metric switch --- */

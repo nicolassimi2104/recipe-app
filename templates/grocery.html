@@ -18,24 +18,47 @@
 
 <h2>Shopping list</h2>
 {% include "_units_toggle.html" %}
-<p class="hint">Amounts are rounded up so you buy enough. Tap an item to tick it off.</p>
-<ul class="grocery-list">
-    {% for item in items %}
-    {# A checkbox inside a label: tapping the text ticks it, no JavaScript needed #}
-    <li>
-        <label>
-            <input type="checkbox">
-            <span>{{ [item.amount, item.unit, item.name] | select | join(" ") }}</span>
-        </label>
-    </li>
+<p class="hint">Amounts are rounded up so you buy enough. Tap an item to tick it off; ticks are saved on this device.</p>
+
+<div class="grocery-tools">
+    <button type="button" class="button" id="copy-list">Copy as text</button>
+    <button type="button" class="button secondary" id="clear-checks">Clear checks</button>
+    <span class="copy-status" id="copy-status" role="status"></span>
+</div>
+
+<div id="grocery">
+    {% for aisle, items in groups %}
+    <section class="aisle">
+        <h3>{{ aisle }}</h3>
+        <ul class="grocery-list">
+            {% for item in items %}
+            {# A checkbox inside a label: tapping the text ticks it #}
+            <li>
+                <label>
+                    <input type="checkbox" data-key="{{ item.key }}">
+                    <span>{{ [item.amount, item.unit, item.name] | select | join(" ") }}</span>
+                </label>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
     {% endfor %}
-</ul>
+</div>
+
+{# Also the fallback for "Copy as text": if the phone won't let us copy,
+   this opens with the text selected so you can copy it by hand #}
+<details class="list-text" id="list-text-box">
+    <summary>Show list as text</summary>
+    <textarea id="list-text" rows="12" readonly>{{ list_text }}</textarea>
+</details>
+
+<script src="{{ url_for('static', filename='grocery.js') }}"></script>
 {% else %}
 <p>No recipes picked yet.</p>
 {% endif %}
 
 <div class="actions">
-    {# request.query_string keeps the current picks, so the ticks come back #}
+    {# request.query_string keeps the current picks and servings #}
     <a href="{{ url_for('plan') }}?{{ request.query_string.decode() }}" class="button secondary">Change recipes</a>
 </div>
 {% endblock %}

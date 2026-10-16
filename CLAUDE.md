@@ -16,7 +16,7 @@ in plain language and keep code simple and readable.
 ## V2 roadmap (build in this order, one branch + PR each)
 1. (DONE) Unit conversion: normalize units, simplify when scaling (12 tsp -> 1/4 cup),
    US/metric toggle, and merge compatible units in the grocery list
-2. Grocery list polish: check-off boxes, group by aisle, copy as text
+2. (DONE) Grocery list polish: check-off boxes, group by aisle, copy as text
 3. Home page search (name + ingredient) and clickable tag filter
 4. Recipe import: paste-JSON page (for output from a Claude chat) + import from a URL
 5. Phone access: free cloud deploy with a simple password gate and recipe export/backup
