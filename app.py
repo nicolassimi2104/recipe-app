@@ -6,6 +6,7 @@ Run with:  python app.py   (then open http://localhost:5000)
 from flask import Flask, abort, redirect, render_template, request, url_for
 
 import db
+import grocery
 import scaling
 
 # Upper limit for the "scale to" box, so a silly number can't make a huge page
@@ -81,6 +82,25 @@ def create_app(db_path=db.DEFAULT_DB_PATH):
             abort(404)  # shows Flask's standard "Not Found" page
         return recipe
 
+    # Read the picked recipes from the URL: ?recipe=1&recipe=3 says which were
+    # ticked, and ?servings_1=8 says how many servings for recipe 1. Ids that
+    # aren't numbers, don't exist, or appear twice are skipped.
+    def read_picks(args):
+        picks = []
+        seen = set()
+        for text in args.getlist("recipe"):
+            try:
+                recipe_id = int(text)
+            except ValueError:
+                continue
+            recipe = db.get_recipe(recipe_id, db_path=db_path)
+            if recipe is None or recipe_id in seen:
+                continue
+            seen.add(recipe_id)
+            servings = requested_servings(args.get(f"servings_{recipe_id}"), recipe["servings"])
+            picks.append((recipe, servings))
+        return picks
+
     # --- Routes: each @app.route connects a URL to the function that handles it ---
 
     @app.route("/")
@@ -145,6 +165,24 @@ def create_app(db_path=db.DEFAULT_DB_PATH):
             db.delete_recipe(recipe_id, db_path=db_path)
             return redirect(url_for("index"))
         return render_template("recipe_delete.html", recipe=recipe)
+
+    # Pick recipes for the week. Coming back from the grocery list keeps your
+    # ticks and servings, because the same ?recipe=... values are in the URL.
+    @app.route("/plan")
+    def plan():
+        recipes = db.list_recipes(db_path=db_path)
+        picked = {recipe["id"]: servings for recipe, servings in read_picks(request.args)}
+        return render_template(
+            "plan.html", recipes=recipes, picked=picked, max_servings=MAX_SERVINGS
+        )
+
+    # The merged shopping list for the picked recipes. Nothing is saved:
+    # the list is worked out fresh from the URL each time.
+    @app.route("/grocery")
+    def grocery_list():
+        picks = read_picks(request.args)
+        items = grocery.merge_ingredients(picks)
+        return render_template("grocery.html", picks=picks, items=items)
 
     return app
 

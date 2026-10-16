@@ -60,20 +60,27 @@ def _parse_fraction(text):
 
 
 # Round to the nearest whole number plus a common cooking fraction,
-# e.g. 1.3 -> 1 1/3 and 0.9 -> 1.
-def round_to_cooking_fraction(value):
+# e.g. 1.3 -> 1 1/3 and 0.9 -> 1. With round_up=True it goes to the next
+# cooking fraction up instead (5/6 -> 1), which a shopping list wants so
+# you never buy too little.
+def round_to_cooking_fraction(value, round_up=False):
     whole = value.numerator // value.denominator   # the whole-number part (floor)
     leftover = value - whole                        # what's left, between 0 and 1
-    # Pick the cooking fraction closest to the leftover. On a tie, min() keeps
-    # the first (smaller) one.
-    nearest = min(COOKING_FRACTIONS, key=lambda f: abs(f - leftover))
-    return whole + nearest
+    if round_up:
+        # The smallest cooking fraction that's at least the leftover.
+        # COOKING_FRACTIONS ends with 1, so there's always one.
+        chosen = min(f for f in COOKING_FRACTIONS if f >= leftover)
+    else:
+        # The cooking fraction closest to the leftover. On a tie, min() keeps
+        # the first (smaller) one.
+        chosen = min(COOKING_FRACTIONS, key=lambda f: abs(f - leftover))
+    return whole + chosen
 
 
 # Turn a Fraction into text a cook can read: "2", "1/3" or "1 1/2".
-# Never returns decimals like 0.3333.
-def format_amount(value):
-    rounded = round_to_cooking_fraction(value)
+# Never returns decimals like 0.3333. Pass round_up=True for shopping lists.
+def format_amount(value, round_up=False):
+    rounded = round_to_cooking_fraction(value, round_up)
     # A real (but tiny) amount shouldn't round down to "0": show 1/8 instead
     if value > 0 and rounded == 0:
         rounded = Fraction(1, 8)

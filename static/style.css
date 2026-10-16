@@ -17,10 +17,27 @@ header {
     background: #2f6f4e;
 }
 
+header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
 header .logo {
     color: #fff;
     font-weight: bold;
     text-decoration: none;
+}
+
+header nav {
+    display: flex;
+    gap: 1rem;
+}
+
+header nav a {
+    color: #fff;
 }
 
 main {
@@ -236,4 +253,78 @@ legend {
 
 .errors p {
     margin: 0.25rem 0;
+}
+
+/* --- Plan week page --- */
+
+/* Checkbox + name on the left, servings box on the right, wrapping on phones */
+.plan-list li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.plan-pick {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1 1 12rem;
+    cursor: pointer;
+}
+
+.plan-pick input,
+.grocery-list input {
+    width: 1.25rem;         /* bigger checkboxes, easier to tap */
+    height: 1.25rem;
+    flex: none;
+}
+
+.plan-servings {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.plan-servings input {
+    width: 4.5rem;
+    padding: 0.4rem;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    font: inherit;          /* also stops iPhones zooming in when you tap a box */
+}
+
+/* --- Grocery list page --- */
+
+.picked-recipes li {
+    margin-bottom: 0.25rem;
+}
+
+.grocery-list {
+    list-style: none;
+    padding: 0;
+}
+
+.grocery-list li {
+    margin-bottom: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+}
+
+.grocery-list label {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+}
+
+/* Ticked items get crossed out */
+.grocery-list input:checked + span {
+    text-decoration: line-through;
+    color: #888;
 }

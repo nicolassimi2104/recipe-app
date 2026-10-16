@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Plan week - Recipe App{% endblock %}
+
+{% block content %}
+<h1>Plan your week</h1>
+<p class="hint">Tick the recipes you'll cook and set how many servings of each.</p>
+
+{% if recipes %}
+{# A plain GET form: the button goes to /grocery?recipe=1&servings_1=8&... #}
+<form method="get" action="{{ url_for('grocery_list') }}">
+    <ul class="recipe-list plan-list">
+        {% for recipe in recipes %}
+        <li>
+            <label class="plan-pick">
+                <input type="checkbox" name="recipe" value="{{ recipe.id }}"{% if recipe.id in picked %} checked{% endif %}>
+                <span class="recipe-name">{{ recipe.name }}</span>
+            </label>
+            <label class="plan-servings">
+                Servings
+                <input type="number" name="servings_{{ recipe.id }}" value="{{ picked.get(recipe.id, recipe.servings) }}"
+                       min="1" max="{{ max_servings }}" inputmode="numeric">
+            </label>
+        </li>
+        {% endfor %}
+    </ul>
+    <button type="submit" class="button">Make grocery list</button>
+</form>
+{% else %}
+<p>No recipes yet. <a href="{{ url_for('recipe_new') }}">Add one</a> first.</p>
+{% endif %}
+{% endblock %}
