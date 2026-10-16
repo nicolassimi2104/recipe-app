@@ -167,3 +167,83 @@ def test_seed_import_steps_and_blank_amounts(db_path):
     assert len(recipe["steps"].split("\n")) == 7
     assert recipe["ingredients"][-1] == {"amount": "", "unit": "", "name": "salt and pepper"}
     assert recipe["tags"] == ["breakfast", "eggs", "oven"]
+
+
+# --- search_recipes / list_tags ---
+
+@pytest.fixture
+def search_db(db_path):
+    """Three recipes with different names, ingredients and tags to search through."""
+    make_recipe(db_path, name="Chicken Curry", tags=["dinner", "spicy"],
+                ingredients=[{"amount": "1", "unit": "lb", "name": "chicken thighs"}])
+    make_recipe(db_path, name="Fried Rice", tags=["dinner", "quick"],
+                ingredients=[{"amount": "2", "unit": "cup", "name": "rice"},
+                             {"amount": "1", "unit": "cup", "name": "Diced Chicken"}])
+    make_recipe(db_path, name="Pancakes", tags=["breakfast", "quick"],
+                ingredients=[{"amount": "1", "unit": "cup", "name": "flour"}])
+    return db_path
+
+
+def names(recipes):
+    return [r["name"] for r in recipes]
+
+
+def test_search_with_no_filters_returns_everything(search_db):
+    assert names(db.search_recipes(db_path=search_db)) == ["Chicken Curry", "Fried Rice", "Pancakes"]
+
+
+def test_search_matches_part_of_name_ignoring_case(search_db):
+    assert names(db.search_recipes("PANCAKE", db_path=search_db)) == ["Pancakes"]
+    assert names(db.search_recipes("  curr ", db_path=search_db)) == ["Chicken Curry"]
+
+
+def test_search_matches_ingredient_name(search_db):
+    # "chick" is in Chicken Curry's name and in Fried Rice's "Diced Chicken" ingredient
+    assert names(db.search_recipes("chick", db_path=search_db)) == ["Chicken Curry", "Fried Rice"]
+    assert names(db.search_recipes("flour", db_path=search_db)) == ["Pancakes"]
+
+
+def test_search_lists_a_recipe_once_even_if_several_ingredients_match(search_db):
+    make_recipe(db_path=search_db, name="Egg Salad", tags=[],
+                ingredients=[{"name": "eggs"}, {"name": "egg yolk mayo"}])
+    assert names(db.search_recipes("egg", db_path=search_db)) == ["Egg Salad"]
+
+
+def test_search_treats_percent_and_underscore_as_plain_text(search_db):
+    # In SQL LIKE these are wildcards; a search for "%" shouldn't match everything
+    assert db.search_recipes("%", db_path=search_db) == []
+    assert db.search_recipes("_", db_path=search_db) == []
+
+
+def test_single_tag_filter(search_db):
+    assert names(db.search_recipes(tags=["quick"], db_path=search_db)) == ["Fried Rice", "Pancakes"]
+
+
+def test_several_tags_must_all_match(search_db):
+    assert names(db.search_recipes(tags=["dinner", "quick"], db_path=search_db)) == ["Fried Rice"]
+    # Upper case and repeats are cleaned up the same way as the recipe form
+    assert names(db.search_recipes(tags=["Quick", "dinner", "quick"], db_path=search_db)) == ["Fried Rice"]
+
+
+def test_search_and_tags_together(search_db):
+    assert names(db.search_recipes("chicken", ["spicy"], db_path=search_db)) == ["Chicken Curry"]
+    assert names(db.search_recipes("chicken", ["quick"], db_path=search_db)) == ["Fried Rice"]
+
+
+def test_no_results(search_db):
+    assert db.search_recipes("tofu", db_path=search_db) == []
+    assert db.search_recipes(tags=["breakfast", "dinner"], db_path=search_db) == []
+    assert db.search_recipes(tags=["no-such-tag"], db_path=search_db) == []
+
+
+def test_search_results_include_tags(search_db):
+    curry = db.search_recipes("curry", db_path=search_db)[0]
+    assert curry["tags"] == ["dinner", "spicy"]
+
+
+def test_list_tags_only_used_tags_alphabetical(search_db):
+    curry_id = db.search_recipes("curry", db_path=search_db)[0]["id"]
+    db.delete_recipe(curry_id, db_path=search_db)  # "spicy" is now unused
+
+    assert db.list_tags(db_path=search_db) == ["breakfast", "dinner", "quick"]
+    assert db.count_recipes(db_path=search_db) == 2
