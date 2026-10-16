@@ -477,11 +477,17 @@ def recipe_from_scraper(scraper):
 
 # Ask the scraper for one field. Sites often leave fields out, and the
 # library raises an error for that, so treat any error as "not there".
+# A site's own scraper can also break when the site changes its layout, so
+# if it gives nothing, try the standard recipe data (schema.org) on the page.
 def _ask(scraper, field):
-    try:
-        return getattr(scraper, field)()
-    except Exception:
-        return None
+    for source in (scraper, getattr(scraper, "schema", None)):
+        try:
+            value = getattr(source, field)()
+        except Exception:
+            continue
+        if value:
+            return value
+    return None
 
 
 # "4 servings" -> 4, "Makes 12 cookies" -> 12, "4-6" -> 4, "" -> None

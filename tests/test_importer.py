@@ -398,6 +398,19 @@ def test_missing_fields_from_the_page():
     assert any("No steps" in n for n in notes)
 
 
+def test_falls_back_to_standard_recipe_data_when_site_scraper_breaks():
+    # Like Simply Recipes in Oct 2026: its own scraper failed on steps, but
+    # the schema.org data on the page still had them
+    broken = AttributeError("'NoneType' object has no attribute 'ol'")
+    scraper = FakeScraper(instructions_list=broken, instructions=broken)
+    scraper.schema = FakeScraper(instructions_list=[], instructions="Step one.\nStep two.")
+
+    recipe, notes = importer.recipe_from_scraper(scraper)
+
+    assert recipe["steps"] == "Step one.\nStep two."
+    assert not any("No steps" in n for n in notes)
+
+
 def test_falls_back_to_instructions_text():
     recipe, _ = importer.recipe_from_scraper(FakeScraper(instructions_list=[]))
 
