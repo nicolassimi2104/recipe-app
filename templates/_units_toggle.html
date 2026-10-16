@@ -1,0 +1,7 @@
+{# The US / Metric switch. Two plain links: the current one is highlighted.
+   The view passes units ("us" or "metric") and units_links (a URL for each). #}
+<p class="units-toggle">
+    Units:
+    <a href="{{ units_links.us }}"{% if units == 'us' %} class="current" aria-current="true"{% endif %}>US</a>
+    <a href="{{ units_links.metric }}"{% if units == 'metric' %} class="current" aria-current="true"{% endif %}>Metric</a>
+</p>

@@ -9,6 +9,8 @@
 {% if recipes %}
 {# A plain GET form: the button goes to /grocery?recipe=1&servings_1=8&... #}
 <form method="get" action="{{ url_for('grocery_list') }}">
+    {# Keep the metric choice when coming back from a metric grocery list #}
+    {% if units == 'metric' %}<input type="hidden" name="units" value="metric">{% endif %}
     <ul class="recipe-list plan-list">
         {% for recipe in recipes %}
         <li>
