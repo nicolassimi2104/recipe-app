@@ -63,15 +63,73 @@ def test_capitals_and_spaces_are_ignored_when_matching():
     ]
 
 
-def test_different_units_stay_separate():
-    a = recipe(4, ("1", "cup", "chicken broth"))
-    b = recipe(4, ("4", "tbsp", "chicken broth"))
+def test_compatible_units_merge_into_one_line():
+    a = recipe(4, ("2", "tbsp", "butter"))
+    b = recipe(4, ("1", "cup", "Butter"))
+
+    # 2 tbsp + 1 cup = 1 1/8 cup
+    assert merge_ingredients([(a, 4), (b, 4)]) == [
+        {"amount": "1 1/8", "unit": "cup", "name": "butter"}
+    ]
+
+
+def test_merged_amount_is_simplified():
+    a = recipe(4, ("4", "tbsp", "chicken broth"))
+    b = recipe(4, ("4", "tablespoons", "chicken broth"))
+
+    # 8 tbsp is 1/2 cup
+    assert merge_ingredients([(a, 4), (b, 4)])[0] == {
+        "amount": "1/2", "unit": "cup", "name": "chicken broth"
+    }
+
+
+def test_weights_merge_across_units():
+    a = recipe(4, ("8", "oz", "chicken"))
+    b = recipe(4, ("1", "lb", "chicken"))
+    c = recipe(4, ("250", "g", "chicken"))
+
+    # 8 oz + 16 oz + 250 g (8.8 oz) = about 32.8 oz, rounded up to 2 1/4 lb
+    assert merge_ingredients([(a, 4), (b, 4), (c, 4)])[0]["amount"] == "2 1/4"
+
+
+def test_volume_and_weight_stay_separate():
+    # We can't turn cups into ounces without knowing how heavy the food is
+    a = recipe(4, ("1", "cup", "flour"))
+    b = recipe(4, ("4", "oz", "flour"))
 
     result = merge_ingredients([(a, 4), (b, 4)])
 
-    assert {"amount": "1", "unit": "cup", "name": "chicken broth"} in result
-    assert {"amount": "4", "unit": "tbsp", "name": "chicken broth"} in result
-    assert len(result) == 2
+    assert {"amount": "1", "unit": "cup", "name": "flour"} in result
+    assert {"amount": "4", "unit": "oz", "name": "flour"} in result
+
+
+def test_unknown_units_stay_separate():
+    a = recipe(4, ("2", "clove", "garlic"))
+    b = recipe(4, ("1", "tsp", "garlic"))
+
+    assert len(merge_ingredients([(a, 4), (b, 4)])) == 2
+
+
+def test_text_amount_with_a_unit_gets_its_own_line():
+    a = recipe(4, ("1", "tbsp", "olive oil"))
+    b = recipe(4, ("2-3", "tbsp", "olive oil"))
+
+    result = merge_ingredients([(a, 4), (b, 4)])
+
+    assert {"amount": "1", "unit": "tbsp", "name": "olive oil"} in result
+    assert {"amount": "2-3", "unit": "tbsp", "name": "olive oil"} in result
+
+
+def test_metric_grocery_list():
+    a = recipe(4, ("1", "cup", "milk"), ("1", "lb", "beef"), ("3", "", "eggs"))
+    b = recipe(4, ("2", "tbsp", "milk"))
+
+    result = merge_ingredients([(a, 4), (b, 4)], system="metric")
+
+    # Rounded up: 1 cup + 2 tbsp is about 266 ml -> 270
+    assert {"amount": "270", "unit": "ml", "name": "milk"} in result
+    assert {"amount": "460", "unit": "g", "name": "beef"} in result
+    assert {"amount": "3", "unit": "", "name": "eggs"} in result
 
 
 def test_different_names_stay_separate():
