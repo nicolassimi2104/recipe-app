@@ -14,7 +14,7 @@ in plain language and keep code simple and readable.
 3. Pick several recipes for the week and generate one merged grocery list
 
 ## V2 roadmap (build in this order, one branch + PR each)
-1. Unit conversion: normalize units, simplify when scaling (12 tsp -> 1/4 cup),
+1. (DONE) Unit conversion: normalize units, simplify when scaling (12 tsp -> 1/4 cup),
    US/metric toggle, and merge compatible units in the grocery list
 2. Grocery list polish: check-off boxes, group by aisle, copy as text
 3. Home page search (name + ingredient) and clickable tag filter
