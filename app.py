@@ -26,11 +26,17 @@ import db
 import grocery
 import importer
 import labels
+import pairing
 import suggestions
 import units
 
 # Upper limit for the "scale to" box, so a silly number can't make a huge page
 MAX_SERVINGS = 1000
+# Upper limit for "keeps N days in the fridge"
+MAX_FRIDGE_DAYS = 60
+# Add the starter side dishes (sides.json) on startup. Most tests switch
+# this off so they keep working with just the 4 starter recipes.
+ADD_STARTER_SIDES = True
 
 
 # Read the ?servings=N value from the URL. Anything missing, not a whole
@@ -100,6 +106,12 @@ def read_recipe_form(form):
                 {"amount": amount.strip(), "unit": unit.strip(), "name": ing_name.strip()}
             )
 
+    # Fridge days are optional: blank means "don't know"
+    fridge_text = form.get("fridge_days", "").strip()
+    fridge_days = int(fridge_text) if fridge_text.isdigit() else None
+    if fridge_text and (fridge_days is None or fridge_days > MAX_FRIDGE_DAYS):
+        errors.append(f"Fridge days must be a whole number from 0 to {MAX_FRIDGE_DAYS}, or blank.")
+
     # One step per line; drop blank lines
     lines = form.get("steps", "").splitlines()
     steps = "\n".join(line.strip() for line in lines if line.strip())
@@ -113,6 +125,9 @@ def read_recipe_form(form):
         # Labels left blank are guessed when saving (see labels.py)
         "proteins": labels.clean_proteins(form.getlist("protein")),
         "meal_type": labels.clean_meal_type(form.get("meal_type", "")),
+        "cuisine": labels.clean_cuisine(form.get("cuisine", "")),
+        "side_type": labels.clean_side_type(form.get("side_type", "")),
+        "fridge_days": fridge_text if errors else fridge_days,
     }
     return recipe, errors
 
@@ -151,6 +166,8 @@ def create_app(db_path=None):
 
     db.init_db(db_path)
     db.import_seed_data(db_path)  # only does anything when there are no recipes yet
+    if ADD_STARTER_SIDES:
+        db.seed_side_bank(db_path)  # the starter side dishes, added only once ever
 
     def get_recipe_or_404(recipe_id):
         recipe = db.get_recipe(recipe_id, db_path=db_path)
@@ -190,6 +207,8 @@ def create_app(db_path=None):
             "this_week": db.plan_servings(db_path=db_path) if logged_in else None,
             "protein_names": labels.PROTEINS,
             "meal_types": labels.MEAL_TYPES,
+            "cuisines": labels.CUISINES,
+            "side_types": labels.SIDE_TYPES,
         }
 
     # Runs before every page. With a password set, anyone not logged in is sent
@@ -365,7 +384,30 @@ def create_app(db_path=None):
             units=system,
             units_links=units_links("recipe_detail", recipe_id=recipe_id),
             found=found_from(recipe_id),
+            **side_suggestions(recipe, servings, system),
         )
+
+    # "Sides that fit" on a main dish's page (the rules are in pairing.py).
+    # ?shuffle=N shows set number N; the Shuffle button links to the next one.
+    def side_suggestions(recipe, servings, system):
+        if recipe["meal_type"] != "main":
+            return {"show_sides": False}
+        shuffle = request.args.get("shuffle", type=int) or 0
+        if shuffle < 0:
+            shuffle = 0
+        sides = db.list_sides(db_path=db_path)
+        _, reason = pairing.wanted_side_types(recipe)
+        return {
+            "show_sides": True,
+            "sides": pairing.pick_sides(recipe, sides, shuffle),
+            "sides_reason": pairing.REASONS[reason],
+            # Keep the scaling and units when shuffling
+            "shuffle_link": url_for(
+                "recipe_detail", recipe_id=recipe["id"],
+                servings=servings if servings != recipe["servings"] else None,
+                units=metric_or_none(system), shuffle=shuffle + 1, _anchor="sides",
+            ) if len(sides) > pairing.HOW_MANY else None,
+        }
 
     # GET shows the empty form; POST is what happens when you press "Save"
     @app.route("/recipes/new", methods=["GET", "POST"])
@@ -379,7 +421,8 @@ def create_app(db_path=None):
             return render_template("recipe_form.html", recipe=recipe, errors=errors), 400
 
         blank = {"name": "", "servings": 4, "ingredients": [], "steps": "", "tags": [],
-                 "proteins": [], "meal_type": ""}
+                 "proteins": [], "meal_type": "", "cuisine": "", "side_type": "",
+                 "fridge_days": None}
         return render_template("recipe_form.html", recipe=blank, errors=[])
 
     @app.route("/recipes/<int:recipe_id>/edit", methods=["GET", "POST"])
@@ -393,11 +436,14 @@ def create_app(db_path=None):
                 # new ingredients. "Guess again" ([] and "") resets both.
                 if request.form.get("guess_labels"):
                     recipe["proteins"], recipe["meal_type"] = [], ""
+                    recipe["cuisine"], recipe["side_type"] = "", ""
                 else:
                     if recipe["proteins"] == existing["proteins"]:
                         recipe["proteins"] = None
                     if recipe["meal_type"] == existing["meal_type"]:
                         recipe["meal_type"] = None
+                    if recipe["cuisine"] == existing["cuisine"]:
+                        recipe["cuisine"] = None
                 db.update_recipe(recipe_id, **recipe, db_path=db_path)
                 return redirect(url_for("recipe_detail", recipe_id=recipe_id))
             recipe["id"] = recipe_id

@@ -69,12 +69,37 @@
                 {% endfor %}
             </select>
         </label>
+        <label>Cuisine
+            <select name="cuisine">
+                {% if not editing %}<option value="">Guess for me</option>{% endif %}
+                {% for kind in cuisines %}
+                <option value="{{ kind }}"{% if kind == recipe.cuisine %} selected{% endif %}>{{ kind }}</option>
+                {% endfor %}
+            </select>
+        </label>
         {% if editing %}
         <label class="check-line">
             <input type="checkbox" name="guess_labels" value="1">
-            Forget my choices and guess both again
+            Forget my choices and guess the labels again
         </label>
         {% endif %}
+    </fieldset>
+
+    {# Used to pair sides with mains. Side type only counts when the meal type is "side". #}
+    <fieldset class="labels-fieldset">
+        <legend>Side dish details</legend>
+        <label>Side type <span class="hint">(only for sides)</span>
+            <select name="side_type">
+                <option value="">Guess for me</option>
+                {% for kind in side_types %}
+                <option value="{{ kind }}"{% if kind == recipe.side_type %} selected{% endif %}>{{ kind }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Keeps in the fridge for <span class="hint">(days, optional)</span>
+            <input type="number" name="fridge_days" value="{{ recipe.fridge_days if recipe.fridge_days is not none else '' }}"
+                   min="0" max="60" inputmode="numeric" class="fridge-days">
+        </label>
     </fieldset>
 
     <div class="actions">

@@ -1,0 +1,28 @@
+{# "Sides that fit" on a main dish's page. The picking rules are in pairing.py.
+   Each side's "Add to this week" adds it at the servings this main is shown at,
+   so its ingredients land on the grocery list in the right amounts. #}
+{% from "_week_button.html" import week_button with context %}
+<section class="sides" id="sides">
+    <h2>Sides that fit</h2>
+    {% if sides %}
+    <p class="hint">{{ sides_reason }}</p>
+    <ul class="side-cards">
+        {% for side in sides %}
+        <li class="side-card">
+            <a href="{{ url_for('recipe_detail', recipe_id=side.id) }}" class="side-name">{{ side.name }}</a>
+            <div class="meta">
+                {% if side.side_type %}<span class="label meal">{{ side.side_type }}</span>{% endif %}
+                {% if side.cuisine and side.cuisine != "other" %}<span class="label cuisine">{{ side.cuisine }}</span>{% endif %}
+            </div>
+            {% if side.fridge_days is not none %}
+            <p class="fridge-note">Keeps {{ side.fridge_days }} day{{ "" if side.fridge_days == 1 else "s" }} in the fridge</p>
+            {% endif %}
+            {{ week_button(side.id, servings=servings, anchor="#sides") }}
+        </li>
+        {% endfor %}
+    </ul>
+    {% if shuffle_link %}<a href="{{ shuffle_link }}" class="button secondary">Shuffle</a>{% endif %}
+    {% else %}
+    <p class="hint">No side dishes yet. Set a recipe's meal type to "side" (Edit) and it shows up here.</p>
+    {% endif %}
+</section>

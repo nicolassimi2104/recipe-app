@@ -10,6 +10,7 @@ BASE_DIR = Path(__file__).parent
 DEFAULT_DB_PATH = BASE_DIR / "recipes.db"
 SCHEMA_PATH = BASE_DIR / "schema.sql"
 SEED_PATH = BASE_DIR / "recipes.json"
+SIDES_PATH = BASE_DIR / "sides.json"   # the starter side dishes
 
 
 def get_connection(db_path=DEFAULT_DB_PATH):
@@ -30,11 +31,15 @@ NEW_RECIPE_COLUMNS = {
     "meal_type": "TEXT NOT NULL DEFAULT ''",
     "proteins_by_hand": "INTEGER NOT NULL DEFAULT 0",
     "meal_type_by_hand": "INTEGER NOT NULL DEFAULT 0",
+    "cuisine": "TEXT NOT NULL DEFAULT ''",
+    "cuisine_by_hand": "INTEGER NOT NULL DEFAULT 0",
+    "side_type": "TEXT NOT NULL DEFAULT ''",
+    "fridge_days": "INTEGER",
 }
 
 # Bump this when an upgrade step is added below. SQLite keeps the number in
 # the file itself ("PRAGMA user_version"), so each step only runs once.
-DB_VERSION = 1
+DB_VERSION = 2
 
 
 def init_db(db_path=DEFAULT_DB_PATH):
@@ -54,8 +59,10 @@ def init_db(db_path=DEFAULT_DB_PATH):
     finally:
         conn.close()
 
-    if version < 1:
-        backfill_labels(db_path)   # label the recipes saved before labels existed
+    if version < 2:
+        # Label the recipes saved before labels (version 1) or cuisine and
+        # side type (version 2) existed. Only blank labels are filled in.
+        backfill_labels(db_path)
     if version < DB_VERSION:
         conn = get_connection(db_path)
         try:
@@ -91,6 +98,56 @@ def import_seed_data(db_path=DEFAULT_DB_PATH, json_path=SEED_PATH):
             db_path=db_path,
         )
     return len(seed_recipes)
+
+
+def seed_side_bank(db_path=DEFAULT_DB_PATH, json_path=SIDES_PATH):
+    """Add the starter side dishes from sides.json, once ever.
+
+    A side whose name you already have is skipped. After the first run it
+    never runs again (the done_once table remembers), so a starter side
+    you deleted stays deleted. Returns how many sides were added.
+    """
+    conn = get_connection(db_path)
+    try:
+        if conn.execute("SELECT 1 FROM done_once WHERE name = 'side-bank'").fetchone():
+            return 0
+        existing = {_name_key(row["name"]) for row in conn.execute("SELECT name FROM recipes")}
+    finally:
+        conn.close()
+
+    with open(json_path, encoding="utf-8") as f:
+        sides = json.load(f)
+
+    added = 0
+    for side in sides:
+        if _name_key(side["name"]) in existing:
+            continue
+        create_recipe(
+            name=side["name"],
+            servings=side["servings"],
+            ingredients=side["ingredients"],
+            steps="\n".join(side["steps"]),
+            tags=parse_tags(",".join(side["tags"])),
+            meal_type="side",
+            cuisine=side["cuisine"],
+            side_type=side["side_type"],
+            fridge_days=side.get("fridge_days"),
+            db_path=db_path,
+        )
+        added += 1
+
+    conn = get_connection(db_path)
+    try:
+        with conn:
+            conn.execute("INSERT OR IGNORE INTO done_once (name) VALUES ('side-bank')")
+    finally:
+        conn.close()
+    return added
+
+
+# "Garlic  Green Beans" and "garlic green beans" count as the same name
+def _name_key(name):
+    return " ".join(name.split()).casefold()
 
 
 # ---------------------------------------------------------------------------
@@ -153,21 +210,32 @@ def _proteins_for(conn, recipe_id):
     return labels.clean_proteins({row["protein"] for row in rows})
 
 
-def _save_labels(conn, recipe_id, name, ingredients, tags, proteins=(), meal_type=""):
+def _save_labels(conn, recipe_id, name, ingredients, tags, proteins=(), meal_type="",
+                 cuisine="", side_type=""):
     """Save a recipe's labels. Any left blank are guessed from the recipe.
 
     Labels you picked are marked "by hand"; guessed ones aren't, so they
-    can be guessed again when the ingredients change.
+    can be guessed again when the ingredients change. Side type is only
+    kept for sides (other recipes get "").
     """
     proteins = labels.clean_proteins(proteins)
     meal_type = labels.clean_meal_type(meal_type)
+    cuisine = labels.clean_cuisine(cuisine)
     guessed_proteins, guessed_meal_type = labels.guess_labels(
         name, ingredients, tags, meal_type or None
     )
+    final_meal_type = meal_type or guessed_meal_type
+    side_type = labels.clean_side_type(side_type)
+    if final_meal_type != "side":
+        side_type = ""
+    elif not side_type:
+        side_type = labels.guess_side_type(name, ingredients)
     conn.execute(
-        "UPDATE recipes SET meal_type = ?, proteins_by_hand = ?, meal_type_by_hand = ?"
-        " WHERE id = ?",
-        (meal_type or guessed_meal_type, int(bool(proteins)), int(bool(meal_type)), recipe_id),
+        "UPDATE recipes SET meal_type = ?, proteins_by_hand = ?, meal_type_by_hand = ?,"
+        " cuisine = ?, cuisine_by_hand = ?, side_type = ? WHERE id = ?",
+        (final_meal_type, int(bool(proteins)), int(bool(meal_type)),
+         cuisine or labels.guess_cuisine(name, ingredients, tags), int(bool(cuisine)),
+         side_type, recipe_id),
     )
     conn.execute("DELETE FROM recipe_proteins WHERE recipe_id = ?", (recipe_id,))
     for protein in proteins or guessed_proteins:
@@ -185,7 +253,8 @@ def backfill_labels(db_path=DEFAULT_DB_PATH):
     conn = get_connection(db_path)
     try:
         rows = conn.execute(
-            "SELECT id, meal_type, proteins_by_hand, meal_type_by_hand FROM recipes"
+            "SELECT id, meal_type, proteins_by_hand, meal_type_by_hand, cuisine,"
+            " cuisine_by_hand, side_type FROM recipes"
         ).fetchall()
     finally:
         conn.close()
@@ -195,18 +264,29 @@ def backfill_labels(db_path=DEFAULT_DB_PATH):
         recipe = get_recipe(row["id"], db_path=db_path)
         fill_meal_type = not row["meal_type"] and not row["meal_type_by_hand"]
         fill_proteins = not recipe["proteins"] and not row["proteins_by_hand"]
-        if not (fill_meal_type or fill_proteins):
-            continue
+        fill_cuisine = not row["cuisine"] and not row["cuisine_by_hand"]
 
         guessed_proteins, guessed_meal_type = labels.guess_labels(
             recipe["name"], recipe["ingredients"], recipe["tags"], row["meal_type"] or None
         )
+        meal_type = row["meal_type"] or guessed_meal_type
+        fill_side_type = meal_type == "side" and not row["side_type"]
+        if not (fill_meal_type or fill_proteins or fill_cuisine or fill_side_type):
+            continue
         conn = get_connection(db_path)
         try:
             with conn:
                 if fill_meal_type:
                     conn.execute("UPDATE recipes SET meal_type = ? WHERE id = ?",
                                  (guessed_meal_type, row["id"]))
+                if fill_cuisine:
+                    conn.execute("UPDATE recipes SET cuisine = ? WHERE id = ?",
+                                 (labels.guess_cuisine(recipe["name"], recipe["ingredients"],
+                                                       recipe["tags"]), row["id"]))
+                if fill_side_type:
+                    conn.execute("UPDATE recipes SET side_type = ? WHERE id = ?",
+                                 (labels.guess_side_type(recipe["name"], recipe["ingredients"]),
+                                  row["id"]))
                 if fill_proteins:
                     for protein in guessed_proteins:
                         conn.execute("INSERT INTO recipe_proteins (recipe_id, protein)"
@@ -222,27 +302,29 @@ def backfill_labels(db_path=DEFAULT_DB_PATH):
 # ---------------------------------------------------------------------------
 
 def create_recipe(name, servings, ingredients, steps, tags, proteins=(), meal_type="",
-                  db_path=DEFAULT_DB_PATH):
+                  cuisine="", side_type="", fridge_days=None, db_path=DEFAULT_DB_PATH):
     """Add a new recipe and return its id.
 
     ingredients: list of {"amount": "1/3", "unit": "cup", "name": "flour"}
     steps: one string, one step per line
     tags: list of tag names (already cleaned by parse_tags)
-    proteins, meal_type: labels picked by hand. Leave them blank (the
-        default, and what imports do) and they're guessed.
+    proteins, meal_type, cuisine, side_type: labels picked by hand. Leave
+        them blank (the default, and what imports do) and they're guessed.
+    fridge_days: how many days it keeps in the fridge, or None if unknown
     """
     conn = get_connection(db_path)
     try:
         # "with conn" saves everything at the end, or nothing if an error happens
         with conn:
             cursor = conn.execute(
-                "INSERT INTO recipes (name, servings, steps) VALUES (?, ?, ?)",
-                (name, servings, steps),
+                "INSERT INTO recipes (name, servings, steps, fridge_days) VALUES (?, ?, ?, ?)",
+                (name, servings, steps, fridge_days),
             )
             recipe_id = cursor.lastrowid
             _save_ingredients(conn, recipe_id, ingredients)
             _save_tags(conn, recipe_id, tags)
-            _save_labels(conn, recipe_id, name, ingredients, tags, proteins, meal_type)
+            _save_labels(conn, recipe_id, name, ingredients, tags, proteins, meal_type,
+                         cuisine, side_type)
         return recipe_id
     finally:
         conn.close()
@@ -312,7 +394,8 @@ def search_recipes(query="", tags=(), db_path=DEFAULT_DB_PATH):
     query: matches part of the recipe name OR any ingredient name, ignoring case.
            Blank means "don't filter by text".
     tags:  the recipe must have ALL of these tags. Empty means "don't filter by tag".
-    Each recipe has id, name, servings, meal_type, tags and proteins.
+    Each recipe has id, name, servings, meal_type, cuisine, side_type,
+    fridge_days, tags and proteins.
     The home page's protein chips filter this list further (see app.py).
     """
     query = query.strip()
@@ -346,7 +429,7 @@ def search_recipes(query="", tags=(), db_path=DEFAULT_DB_PATH):
         )
         params += tags + [len(tags)]
 
-    sql = "SELECT id, name, servings, meal_type FROM recipes"
+    sql = "SELECT id, name, servings, meal_type, cuisine, side_type, fridge_days FROM recipes"
     if conditions:
         sql += " WHERE " + " AND ".join(conditions)
     sql += " ORDER BY name"
@@ -365,39 +448,51 @@ def search_recipes(query="", tags=(), db_path=DEFAULT_DB_PATH):
 
 
 def update_recipe(recipe_id, name, servings, ingredients, steps, tags, proteins=None,
-                  meal_type=None, db_path=DEFAULT_DB_PATH):
+                  meal_type=None, cuisine=None, side_type="", fridge_days=None,
+                  db_path=DEFAULT_DB_PATH):
     """Replace a recipe's details, ingredients and tags with the new values.
 
-    proteins, meal_type:
+    proteins, meal_type, cuisine:
         None (the default) means "you didn't change it": a label set by hand
             stays as it is, and a guessed one is guessed again from the new
             ingredients.
         A value means you picked it by hand. A blank value ([] or "") means
             "guess it for me" from now on.
+    side_type: the value to save ("" means guess it). Only kept for sides.
+    fridge_days: the new value, or None for "don't know".
     """
     conn = get_connection(db_path)
     try:
         with conn:
             current = conn.execute(
-                "SELECT meal_type, proteins_by_hand, meal_type_by_hand FROM recipes WHERE id = ?",
+                "SELECT meal_type, proteins_by_hand, meal_type_by_hand, cuisine, cuisine_by_hand"
+                " FROM recipes WHERE id = ?",
                 (recipe_id,),
             ).fetchone()
             if proteins is None:
                 proteins = _proteins_for(conn, recipe_id) if current["proteins_by_hand"] else []
             if meal_type is None:
                 meal_type = current["meal_type"] if current["meal_type_by_hand"] else ""
+            if cuisine is None:
+                cuisine = current["cuisine"] if current["cuisine_by_hand"] else ""
             conn.execute(
-                "UPDATE recipes SET name = ?, servings = ?, steps = ? WHERE id = ?",
-                (name, servings, steps, recipe_id),
+                "UPDATE recipes SET name = ?, servings = ?, steps = ?, fridge_days = ? WHERE id = ?",
+                (name, servings, steps, fridge_days, recipe_id),
             )
             # Simplest approach: wipe the old ingredients and tag links, then save the new ones
             conn.execute("DELETE FROM ingredients WHERE recipe_id = ?", (recipe_id,))
             conn.execute("DELETE FROM recipe_tags WHERE recipe_id = ?", (recipe_id,))
             _save_ingredients(conn, recipe_id, ingredients)
             _save_tags(conn, recipe_id, tags)
-            _save_labels(conn, recipe_id, name, ingredients, tags, proteins, meal_type)
+            _save_labels(conn, recipe_id, name, ingredients, tags, proteins, meal_type,
+                         cuisine, side_type)
     finally:
         conn.close()
+
+
+def list_sides(db_path=DEFAULT_DB_PATH):
+    """Every recipe with meal type "side" (same shape as list_recipes)."""
+    return [r for r in list_recipes(db_path=db_path) if r["meal_type"] == "side"]
 
 
 def delete_recipe(recipe_id, db_path=DEFAULT_DB_PATH):
