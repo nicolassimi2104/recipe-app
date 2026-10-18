@@ -39,7 +39,7 @@ NEW_RECIPE_COLUMNS = {
 
 # Bump this when an upgrade step is added below. SQLite keeps the number in
 # the file itself ("PRAGMA user_version"), so each step only runs once.
-DB_VERSION = 2
+DB_VERSION = 3
 
 
 def init_db(db_path=DEFAULT_DB_PATH):
@@ -63,6 +63,10 @@ def init_db(db_path=DEFAULT_DB_PATH):
         # Label the recipes saved before labels (version 1) or cuisine and
         # side type (version 2) existed. Only blank labels are filled in.
         backfill_labels(db_path)
+    if version < 3:
+        # The protein guess used to miss "boneless, skinless chicken
+        # breasts" (it stopped at the first comma), so guess again
+        reguess_proteins(db_path)
     if version < DB_VERSION:
         conn = get_connection(db_path)
         try:
@@ -291,6 +295,40 @@ def backfill_labels(db_path=DEFAULT_DB_PATH):
                     for protein in guessed_proteins:
                         conn.execute("INSERT INTO recipe_proteins (recipe_id, protein)"
                                      " VALUES (?, ?)", (row["id"], protein))
+        finally:
+            conn.close()
+        changed += 1
+    return changed
+
+
+def reguess_proteins(db_path=DEFAULT_DB_PATH):
+    """Guess the proteins again for every recipe whose proteins weren't set by hand.
+
+    Used when the guessing rules get better. Returns how many recipes changed.
+    """
+    conn = get_connection(db_path)
+    try:
+        rows = conn.execute(
+            "SELECT id, meal_type FROM recipes WHERE proteins_by_hand = 0"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    changed = 0
+    for row in rows:
+        recipe = get_recipe(row["id"], db_path=db_path)
+        guessed, _ = labels.guess_labels(
+            recipe["name"], recipe["ingredients"], recipe["tags"], row["meal_type"] or None
+        )
+        if guessed == recipe["proteins"]:
+            continue
+        conn = get_connection(db_path)
+        try:
+            with conn:
+                conn.execute("DELETE FROM recipe_proteins WHERE recipe_id = ?", (row["id"],))
+                for protein in guessed:
+                    conn.execute("INSERT INTO recipe_proteins (recipe_id, protein)"
+                                 " VALUES (?, ?)", (row["id"], protein))
         finally:
             conn.close()
         changed += 1

@@ -76,6 +76,30 @@ def test_text_after_a_comma_is_ignored():
     assert labels.proteins_in("shrimp, peeled (save shells for stock)") == {"fish"}
 
 
+@pytest.mark.parametrize("name", [
+    # The meat comes after a comma (imported recipes write it like this)
+    "boneless, skinless chicken breasts",
+    "boneless, skinless chicken breasts (, each breast sliced in half lengthwise)",
+    "skin-on, bone-in chicken thighs",
+])
+def test_meat_after_a_comma_still_counts(name):
+    assert labels.proteins_in(name) == {"chicken"}
+
+
+def test_meat_only_in_a_bracket_note_does_not_count():
+    assert labels.proteins_in("baby spinach (or chicken stock, if you like)") == set()
+
+
+def test_marry_me_chicken_is_chicken():
+    ingredients = [
+        ing("1 1/2", "lb", "boneless, skinless chicken breasts (, each breast sliced in half)"),
+        ing("1", "cup", "chicken stock"),
+        ing("1", "cup", "heavy cream"),
+        ing("3", "cup", "baby spinach"),
+    ]
+    assert proteins("Marry Me Chicken", ingredients) == ["chicken"]
+
+
 # --- Size estimates ---
 
 @pytest.mark.parametrize("amount, unit, name, grams", [
