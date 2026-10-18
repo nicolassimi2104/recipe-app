@@ -29,7 +29,8 @@ A. (DONE) Browse by protein + one-tap "Add to this week" (plan saved in the data
    label guessing rules are in labels.py)
 B. (DONE) Fresh finds: suggestions that refresh themselves when the app opens, with one-click import
    (feed list and skip-words at the top of suggestions.py; tests run with the internet switched off)
-C. Side dish pairing
+C. (DONE) Side dish pairing: "Sides that fit" on main dishes, starter sides seeded once
+   (rules in pairing.py, cuisine/side-type guessing in labels.py, starter bank in sides.json)
 
 ## Rules
 - This week's plan is saved in the database (one current plan); old ?recipe=... plan URLs must not crash

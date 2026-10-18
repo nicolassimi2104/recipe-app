@@ -19,9 +19,14 @@
 <div class="meta">
     {% for key in recipe.proteins %}<a href="{{ url_for('index', protein=key) }}" class="label protein-{{ key }}">{{ protein_names[key] }}</a>{% endfor %}
     <span class="label meal">{{ recipe.meal_type }}</span>
+    {% if recipe.side_type %}<span class="label meal">{{ recipe.side_type }}</span>{% endif %}
+    {% if recipe.cuisine and recipe.cuisine != "other" %}<span class="label cuisine">{{ recipe.cuisine }}</span>{% endif %}
     <span>Serves {{ recipe.servings }}</span>
     {% for tag in recipe.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
 </div>
+{% if recipe.fridge_days is not none %}
+<p class="fridge-note">Keeps {{ recipe.fridge_days }} day{{ "" if recipe.fridge_days == 1 else "s" }} in the fridge</p>
+{% endif %}
 {# Adds it at the servings shown below, so scale first if you want more #}
 {{ week_button(recipe.id, servings=servings) }}
 {% if recipe.id in this_week %}
@@ -61,6 +66,8 @@
     <li>{{ step }}</li>
     {% endfor %}
 </ol>
+
+{% if show_sides %}{% include "_sides.html" %}{% endif %}
 
 <div class="actions">
     <a href="{{ url_for('recipe_edit', recipe_id=recipe.id) }}" class="button">Edit</a>
