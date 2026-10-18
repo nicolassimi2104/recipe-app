@@ -1,0 +1,383 @@
+[
+  {
+    "name": "Cilantro Lime Rice",
+    "servings": 4,
+    "side_type": "starch",
+    "cuisine": "mexican",
+    "fridge_days": 4,
+    "tags": ["side", "meal-prep", "reheats-well"],
+    "ingredients": [
+      {"amount": "1 1/2", "unit": "cup", "name": "long-grain white rice, rinsed"},
+      {"amount": "2 1/2", "unit": "cup", "name": "water"},
+      {"amount": "1", "unit": "tbsp", "name": "olive oil"},
+      {"amount": "1", "unit": "", "name": "lime, zested and juiced"},
+      {"amount": "1/2", "unit": "cup", "name": "fresh cilantro, chopped"},
+      {"amount": "3/4", "unit": "tsp", "name": "salt"}
+    ],
+    "steps": [
+      "Warm the oil in a saucepan and stir the rinsed rice in it for about a minute, until it smells toasty.",
+      "Add the water and salt, bring to a boil, then cover and turn the heat to low for 15 minutes.",
+      "Take it off the heat and leave the lid on for 5 more minutes.",
+      "Fluff with a fork and fold in the lime zest, lime juice and cilantro.",
+      "To reheat, sprinkle with a spoon of water, cover and microwave until steaming."
+    ]
+  },
+  {
+    "name": "Crispy Garlic Roasted Potatoes",
+    "servings": 4,
+    "side_type": "starch",
+    "cuisine": "american",
+    "fridge_days": 4,
+    "tags": ["side", "oven", "meal-prep", "reheats-well"],
+    "ingredients": [
+      {"amount": "2", "unit": "lb", "name": "baby potatoes, halved"},
+      {"amount": "3", "unit": "tbsp", "name": "olive oil"},
+      {"amount": "4", "unit": "", "name": "garlic cloves, minced"},
+      {"amount": "1", "unit": "tsp", "name": "dried rosemary"},
+      {"amount": "1", "unit": "tsp", "name": "salt"},
+      {"amount": "1/2", "unit": "tsp", "name": "black pepper"}
+    ],
+    "steps": [
+      "Heat the oven to 425°F.",
+      "Toss the potatoes with the oil, garlic, rosemary, salt and pepper right on a sheet pan.",
+      "Turn them cut side down and roast 30-35 minutes, flipping once, until crisp and golden.",
+      "Reheat in a hot oven or air fryer for a few minutes so they crisp up again."
+    ]
+  },
+  {
+    "name": "Cold Sesame Ginger Noodles",
+    "servings": 4,
+    "side_type": "starch",
+    "cuisine": "asian",
+    "fridge_days": 4,
+    "tags": ["side", "meal-prep", "no-reheat"],
+    "ingredients": [
+      {"amount": "8", "unit": "oz", "name": "spaghetti or lo mein noodles"},
+      {"amount": "3", "unit": "tbsp", "name": "soy sauce"},
+      {"amount": "2", "unit": "tbsp", "name": "toasted sesame oil"},
+      {"amount": "1", "unit": "tbsp", "name": "rice vinegar"},
+      {"amount": "1", "unit": "tbsp", "name": "honey"},
+      {"amount": "1", "unit": "tbsp", "name": "fresh ginger, grated"},
+      {"amount": "3", "unit": "", "name": "green onions, sliced"},
+      {"amount": "1", "unit": "tbsp", "name": "sesame seeds"}
+    ],
+    "steps": [
+      "Cook the noodles as the package says, then rinse under cold water and drain well.",
+      "Whisk the soy sauce, sesame oil, vinegar, honey and ginger in a big bowl.",
+      "Toss the noodles in the sauce and top with green onions and sesame seeds.",
+      "Eat cold or at room temperature. Toss again before serving; they soak up sauce as they sit."
+    ]
+  },
+  {
+    "name": "Lemon Herb Orzo",
+    "servings": 4,
+    "side_type": "starch",
+    "cuisine": "mediterranean",
+    "fridge_days": 4,
+    "tags": ["side", "meal-prep", "reheats-well"],
+    "ingredients": [
+      {"amount": "1 1/4", "unit": "cup", "name": "orzo"},
+      {"amount": "1", "unit": "tbsp", "name": "butter"},
+      {"amount": "1", "unit": "", "name": "lemon, zested and juiced"},
+      {"amount": "1/4", "unit": "cup", "name": "fresh parsley, chopped"},
+      {"amount": "1", "unit": "tbsp", "name": "fresh dill, chopped"},
+      {"amount": "1/2", "unit": "tsp", "name": "salt"}
+    ],
+    "steps": [
+      "Boil the orzo in well-salted water until just tender, about 9 minutes, then drain.",
+      "While it's still hot, stir in the butter, lemon zest and lemon juice.",
+      "Fold in the parsley and dill and taste for salt.",
+      "Reheat with a splash of water so it loosens up again."
+    ]
+  },
+  {
+    "name": "Creamy Parmesan Polenta",
+    "servings": 4,
+    "side_type": "starch",
+    "cuisine": "italian",
+    "fridge_days": 4,
+    "tags": ["side", "stovetop"],
+    "ingredients": [
+      {"amount": "4", "unit": "cup", "name": "water or broth"},
+      {"amount": "1", "unit": "cup", "name": "polenta (coarse cornmeal)"},
+      {"amount": "1/2", "unit": "cup", "name": "parmesan, grated"},
+      {"amount": "2", "unit": "tbsp", "name": "butter"},
+      {"amount": "1", "unit": "tsp", "name": "salt"}
+    ],
+    "steps": [
+      "Bring the water and salt to a boil, then pour in the polenta slowly while whisking.",
+      "Turn the heat to low and cook 25-30 minutes, stirring every few minutes so it doesn't stick.",
+      "Stir in the parmesan and butter just before serving.",
+      "It firms up in the fridge: reheat with a splash of milk or water, whisking until creamy, or slice and pan-fry."
+    ]
+  },
+  {
+    "name": "Roasted Broccoli with Parmesan and Lemon",
+    "servings": 4,
+    "side_type": "vegetable",
+    "cuisine": "italian",
+    "fridge_days": 4,
+    "tags": ["side", "oven", "meal-prep", "reheats-well"],
+    "ingredients": [
+      {"amount": "1 1/2", "unit": "lb", "name": "broccoli florets"},
+      {"amount": "2", "unit": "tbsp", "name": "olive oil"},
+      {"amount": "2", "unit": "", "name": "garlic cloves, sliced"},
+      {"amount": "1/4", "unit": "cup", "name": "parmesan, grated"},
+      {"amount": "1/2", "unit": "", "name": "lemon, juiced"},
+      {"amount": "1/2", "unit": "tsp", "name": "salt"}
+    ],
+    "steps": [
+      "Heat the oven to 425°F.",
+      "Spread the broccoli on a sheet pan, toss with the oil, garlic and salt, and keep it in one layer.",
+      "Roast 18-20 minutes until the edges are browned.",
+      "Squeeze the lemon over it and scatter the parmesan on top while it's hot."
+    ]
+  },
+  {
+    "name": "Garlicky Green Beans",
+    "servings": 4,
+    "side_type": "vegetable",
+    "cuisine": "american",
+    "fridge_days": 4,
+    "tags": ["side", "quick", "meal-prep", "reheats-well"],
+    "ingredients": [
+      {"amount": "1", "unit": "lb", "name": "green beans, trimmed"},
+      {"amount": "1", "unit": "tbsp", "name": "butter"},
+      {"amount": "1", "unit": "tbsp", "name": "olive oil"},
+      {"amount": "3", "unit": "", "name": "garlic cloves, minced"},
+      {"amount": "", "unit": "", "name": "salt and pepper"}
+    ],
+    "steps": [
+      "Boil the green beans in salted water for 3 minutes, then drain.",
+      "Melt the butter with the oil in a large skillet over medium-high heat.",
+      "Add the beans and cook 4-5 minutes, tossing, until they have a few blistered spots.",
+      "Stir in the garlic for the last minute so it doesn't burn, then season."
+    ]
+  },
+  {
+    "name": "Honey Butter Glazed Carrots",
+    "servings": 4,
+    "side_type": "vegetable",
+    "cuisine": "american",
+    "fridge_days": 5,
+    "tags": ["side", "stovetop", "meal-prep", "reheats-well"],
+    "ingredients": [
+      {"amount": "1 1/2", "unit": "lb", "name": "carrots, sliced into coins"},
+      {"amount": "2", "unit": "tbsp", "name": "butter"},
+      {"amount": "2", "unit": "tbsp", "name": "honey"},
+      {"amount": "1/2", "unit": "cup", "name": "water"},
+      {"amount": "1/2", "unit": "tsp", "name": "salt"},
+      {"amount": "1", "unit": "tbsp", "name": "fresh parsley, chopped"}
+    ],
+    "steps": [
+      "Put the carrots, water, butter and salt in a skillet, cover, and simmer 8 minutes.",
+      "Take the lid off, add the honey and keep cooking until the water is gone and the carrots are shiny.",
+      "Sprinkle with parsley before serving."
+    ]
+  },
+  {
+    "name": "Charred Street Corn Skillet",
+    "servings": 4,
+    "side_type": "vegetable",
+    "cuisine": "mexican",
+    "fridge_days": 3,
+    "tags": ["side", "quick", "stovetop"],
+    "ingredients": [
+      {"amount": "4", "unit": "cup", "name": "corn kernels (frozen and thawed is fine)"},
+      {"amount": "1", "unit": "tbsp", "name": "butter"},
+      {"amount": "2", "unit": "tbsp", "name": "mayonnaise"},
+      {"amount": "1/3", "unit": "cup", "name": "cotija or feta, crumbled"},
+      {"amount": "1/2", "unit": "tsp", "name": "chili powder"},
+      {"amount": "1", "unit": "", "name": "lime, juiced"},
+      {"amount": "2", "unit": "tbsp", "name": "fresh cilantro, chopped"}
+    ],
+    "steps": [
+      "Melt the butter in a large skillet over high heat.",
+      "Add the corn in one layer and leave it alone for 3-4 minutes so it chars, then stir and repeat.",
+      "Off the heat, stir in the mayonnaise, lime juice and chili powder.",
+      "Top with the cheese and cilantro."
+    ]
+  },
+  {
+    "name": "Ginger Garlic Bok Choy",
+    "servings": 4,
+    "side_type": "vegetable",
+    "cuisine": "asian",
+    "fridge_days": 2,
+    "tags": ["side", "quick", "stovetop"],
+    "ingredients": [
+      {"amount": "1 1/2", "unit": "lb", "name": "baby bok choy, halved"},
+      {"amount": "1", "unit": "tbsp", "name": "vegetable oil"},
+      {"amount": "2", "unit": "", "name": "garlic cloves, minced"},
+      {"amount": "1", "unit": "tbsp", "name": "fresh ginger, grated"},
+      {"amount": "1", "unit": "tbsp", "name": "soy sauce"},
+      {"amount": "1", "unit": "tsp", "name": "toasted sesame oil"}
+    ],
+    "steps": [
+      "Heat the vegetable oil in a wok or big skillet over high heat.",
+      "Add the bok choy cut side down and let it brown for 2 minutes.",
+      "Add the garlic, ginger and a splash of water, cover, and steam 2 minutes until the stems are just tender.",
+      "Drizzle with soy sauce and sesame oil. Best eaten fresh."
+    ]
+  },
+  {
+    "name": "Roasted Zucchini and Peppers with Oregano",
+    "servings": 4,
+    "side_type": "vegetable",
+    "cuisine": "mediterranean",
+    "fridge_days": 4,
+    "tags": ["side", "oven", "meal-prep", "reheats-well"],
+    "ingredients": [
+      {"amount": "2", "unit": "", "name": "zucchini, cut into half-moons"},
+      {"amount": "2", "unit": "", "name": "bell peppers, cut into strips"},
+      {"amount": "1", "unit": "", "name": "red onion, cut into wedges"},
+      {"amount": "2", "unit": "tbsp", "name": "olive oil"},
+      {"amount": "1", "unit": "tsp", "name": "dried oregano"},
+      {"amount": "1/2", "unit": "tsp", "name": "salt"},
+      {"amount": "1", "unit": "tsp", "name": "red wine vinegar"}
+    ],
+    "steps": [
+      "Heat the oven to 425°F.",
+      "Toss the vegetables with the oil, oregano and salt and spread them on a sheet pan.",
+      "Roast 25 minutes, stirring halfway, until soft with browned edges.",
+      "Splash with the vinegar before serving. Good warm or cold."
+    ]
+  },
+  {
+    "name": "Greek Cucumber Tomato Salad",
+    "servings": 4,
+    "side_type": "salad",
+    "cuisine": "mediterranean",
+    "fridge_days": 2,
+    "tags": ["side", "no-cook", "quick"],
+    "ingredients": [
+      {"amount": "1", "unit": "", "name": "English cucumber, chopped"},
+      {"amount": "2", "unit": "cup", "name": "cherry tomatoes, halved"},
+      {"amount": "1/4", "unit": "", "name": "red onion, thinly sliced"},
+      {"amount": "1/3", "unit": "cup", "name": "kalamata olives, halved"},
+      {"amount": "1/2", "unit": "cup", "name": "feta, crumbled"},
+      {"amount": "3", "unit": "tbsp", "name": "olive oil"},
+      {"amount": "1", "unit": "tbsp", "name": "red wine vinegar"},
+      {"amount": "1/2", "unit": "tsp", "name": "dried oregano"}
+    ],
+    "steps": [
+      "Put the cucumber, tomatoes, onion and olives in a bowl.",
+      "Whisk the oil, vinegar, oregano and a pinch of salt, and pour it over.",
+      "Toss gently and top with the feta.",
+      "For meal prep, keep the dressing separate and add it the day you eat it."
+    ]
+  },
+  {
+    "name": "Crunchy Asian Slaw",
+    "servings": 6,
+    "side_type": "salad",
+    "cuisine": "asian",
+    "fridge_days": 4,
+    "tags": ["side", "no-cook", "meal-prep"],
+    "ingredients": [
+      {"amount": "6", "unit": "cup", "name": "shredded cabbage (green and red)"},
+      {"amount": "1", "unit": "cup", "name": "carrots, shredded"},
+      {"amount": "1", "unit": "cup", "name": "shelled edamame"},
+      {"amount": "3", "unit": "", "name": "green onions, sliced"},
+      {"amount": "3", "unit": "tbsp", "name": "rice vinegar"},
+      {"amount": "2", "unit": "tbsp", "name": "soy sauce"},
+      {"amount": "1", "unit": "tbsp", "name": "toasted sesame oil"},
+      {"amount": "1", "unit": "tbsp", "name": "honey"},
+      {"amount": "1/4", "unit": "cup", "name": "roasted peanuts, chopped"}
+    ],
+    "steps": [
+      "Toss the cabbage, carrots, edamame and green onions in a large bowl.",
+      "Shake the vinegar, soy sauce, sesame oil and honey in a jar.",
+      "Pour over the slaw, toss, and top with the peanuts.",
+      "Cabbage stays crunchy for days; keep the peanuts separate so they don't go soft."
+    ]
+  },
+  {
+    "name": "Black Bean and Corn Salad",
+    "servings": 6,
+    "side_type": "salad",
+    "cuisine": "mexican",
+    "fridge_days": 5,
+    "tags": ["side", "no-cook", "meal-prep"],
+    "ingredients": [
+      {"amount": "2", "unit": "can", "name": "black beans, rinsed and drained"},
+      {"amount": "2", "unit": "cup", "name": "corn kernels"},
+      {"amount": "1", "unit": "", "name": "red bell pepper, diced"},
+      {"amount": "1/2", "unit": "", "name": "red onion, finely diced"},
+      {"amount": "1", "unit": "", "name": "jalapeno, seeded and minced"},
+      {"amount": "1/3", "unit": "cup", "name": "fresh cilantro, chopped"},
+      {"amount": "2", "unit": "", "name": "limes, juiced"},
+      {"amount": "3", "unit": "tbsp", "name": "olive oil"},
+      {"amount": "1", "unit": "tsp", "name": "ground cumin"}
+    ],
+    "steps": [
+      "Mix the beans, corn, bell pepper, onion, jalapeno and cilantro in a bowl.",
+      "Whisk the lime juice, oil, cumin and a big pinch of salt and pour over.",
+      "Stir well and let it sit 15 minutes so the flavors soak in.",
+      "It tastes even better on day two."
+    ]
+  },
+  {
+    "name": "Arugula Salad with Parmesan",
+    "servings": 4,
+    "side_type": "salad",
+    "cuisine": "italian",
+    "fridge_days": 1,
+    "tags": ["side", "no-cook", "quick"],
+    "ingredients": [
+      {"amount": "5", "unit": "oz", "name": "baby arugula"},
+      {"amount": "1/3", "unit": "cup", "name": "parmesan, shaved"},
+      {"amount": "2", "unit": "tbsp", "name": "olive oil"},
+      {"amount": "1", "unit": "tbsp", "name": "lemon juice"},
+      {"amount": "", "unit": "", "name": "salt and pepper"}
+    ],
+    "steps": [
+      "Put the arugula in a wide bowl.",
+      "Drizzle with the oil and lemon juice, season, and toss with your hands.",
+      "Top with the parmesan and serve right away (dressed greens wilt fast)."
+    ]
+  },
+  {
+    "name": "Smoky Stewed Pinto Beans",
+    "servings": 6,
+    "side_type": "other",
+    "cuisine": "mexican",
+    "fridge_days": 5,
+    "tags": ["side", "stovetop", "meal-prep", "reheats-well"],
+    "ingredients": [
+      {"amount": "2", "unit": "can", "name": "pinto beans, with their liquid"},
+      {"amount": "1", "unit": "tbsp", "name": "olive oil"},
+      {"amount": "1/2", "unit": "", "name": "onion, diced"},
+      {"amount": "2", "unit": "", "name": "garlic cloves, minced"},
+      {"amount": "1", "unit": "tsp", "name": "smoked paprika"},
+      {"amount": "1", "unit": "tsp", "name": "ground cumin"},
+      {"amount": "1/2", "unit": "cup", "name": "water"}
+    ],
+    "steps": [
+      "Soften the onion in the oil for 5 minutes, then add the garlic, paprika and cumin for 1 minute.",
+      "Add the beans with their liquid and the water.",
+      "Simmer 15 minutes, mashing a few beans against the pot to thicken it.",
+      "Reheats perfectly; add a splash of water if it gets too thick."
+    ]
+  },
+  {
+    "name": "Quick Pickled Cucumbers",
+    "servings": 4,
+    "side_type": "other",
+    "cuisine": "asian",
+    "fridge_days": 7,
+    "tags": ["side", "no-cook", "meal-prep"],
+    "ingredients": [
+      {"amount": "2", "unit": "", "name": "cucumbers, thinly sliced"},
+      {"amount": "1/2", "unit": "cup", "name": "rice vinegar"},
+      {"amount": "1", "unit": "tbsp", "name": "sugar"},
+      {"amount": "1", "unit": "tsp", "name": "salt"},
+      {"amount": "1/4", "unit": "tsp", "name": "red pepper flakes"}
+    ],
+    "steps": [
+      "Stir the vinegar, sugar and salt until dissolved.",
+      "Pack the cucumbers in a jar, pour the vinegar mix over and add the pepper flakes.",
+      "Chill at least 30 minutes. They get tangier each day."
+    ]
+  }
+]

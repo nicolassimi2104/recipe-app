@@ -5,6 +5,7 @@ import urllib.request
 
 import pytest
 
+import app
 import suggestions
 
 
@@ -31,3 +32,11 @@ def no_network(monkeypatch):
     # Forget refreshes from earlier tests
     monkeypatch.setattr(suggestions, "_running", set())
     monkeypatch.setattr(suggestions, "_last_try", {})
+
+
+# The starter side dishes (sides.json) would add 17 recipes to every test
+# app, and older tests count on exactly the 4 starter recipes. They're left
+# out unless a test asks for them (see tests/test_sides.py).
+@pytest.fixture(autouse=True)
+def no_starter_sides(monkeypatch):
+    monkeypatch.setattr(app, "ADD_STARTER_SIDES", False)
