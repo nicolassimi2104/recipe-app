@@ -1,0 +1,23 @@
+{# The one-tap "Add to this week" button. It's a tiny form, so it works
+   without JavaScript: tapping it saves, then comes back to this page.
+   Import with: {% from "_week_button.html" import week_button with context %} #}
+{% macro week_button(recipe_id, servings=None, anchor="") %}
+{% set planned = recipe_id in this_week %}
+<form method="post" class="week-form"
+      action="{{ url_for('plan_remove' if planned else 'plan_add', recipe_id=recipe_id) }}">
+    {# Back to this same page (and the same card on a long list) #}
+    <input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}{{ anchor }}">
+    {% if servings and not planned %}<input type="hidden" name="servings" value="{{ servings }}">{% endif %}
+    {% if planned %}
+    <button type="submit" class="week-button on" title="Tap to take it off the plan">&#10003; On this week's plan</button>
+    {% else %}
+    <button type="submit" class="week-button">+ Add to this week</button>
+    {% endif %}
+</form>
+{% endmacro %}
+
+{# Protein and meal type labels, e.g. "Chicken · main" #}
+{% macro label_chips(recipe) %}
+{% for key in recipe.proteins %}<span class="label protein-{{ key }}">{{ protein_names[key] }}</span>{% endfor %}
+{% if recipe.meal_type and recipe.meal_type != "main" %}<span class="label meal">{{ recipe.meal_type }}</span>{% endif %}
+{% endmacro %}

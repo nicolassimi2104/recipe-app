@@ -1,13 +1,10 @@
 // Grocery list page: remember ticks, clear them, and copy the list as text.
 
 // --- Remembering ticks ---
-// The plan lives in the URL, so the URL (minus the US/metric switch) names
-// this list. Ticks are saved in the browser under that name, so a different
-// week's plan starts with a clean list, but switching units keeps your ticks.
-const params = new URLSearchParams(location.search);
-params.delete("units");
-params.sort();
-const storageKey = "grocery-checks:" + params.toString();
+// The page names this exact plan in data-plan (recipe ids and servings, e.g.
+// "2x4,3x8"). Ticks are saved in the browser under that name, so a different
+// week's plan starts with a clean list, but switching US/metric keeps your ticks.
+const storageKey = "grocery-checks:" + document.getElementById("grocery").dataset.plan;
 
 const boxes = document.querySelectorAll("#grocery input[type=checkbox]");
 

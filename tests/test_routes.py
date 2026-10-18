@@ -197,32 +197,41 @@ def test_detail_page_without_servings_shows_scale_box(client):
     assert "Scaled from" not in page
 
 
-# --- Plan week and grocery list ---
+# --- This week's plan and grocery list ---
 # Seed ids: 1 quiche (serves 6), 2 mushroom chicken (4), 3 stroganoff (4), 4 parfait (5).
+
+def plan_week(client, servings_by_id):
+    """Put recipes on the plan the way the buttons do: {recipe_id: servings}."""
+    for recipe_id, servings in servings_by_id.items():
+        response = client.post(f"/plan/add/{recipe_id}", data={"servings": servings, "next": "/"})
+        assert response.status_code == 302
+
 
 def test_header_links_to_plan_page(client):
     assert 'href="/plan"' in client.get("/").get_data(as_text=True)
 
 
-def test_plan_page_lists_recipes_with_checkboxes(client):
+def test_empty_plan_page_points_to_recipes(client):
     page = client.get("/plan").get_data(as_text=True)
 
-    assert "Chicken Stroganoff" in page
-    assert page.count('type="checkbox" name="recipe"') == 4
-    assert 'name="servings_1"' in page
-    assert "Make grocery list" in page
+    assert "Nothing planned yet" in page
+    assert "This week (0)" in page
 
 
-def test_plan_page_remembers_picks(client):
-    page = client.get("/plan?recipe=2&servings_2=8").get_data(as_text=True)
+def test_plan_page_shows_saved_recipes_with_servings(client):
+    plan_week(client, {2: 8})
+    page = client.get("/plan").get_data(as_text=True)
 
-    assert 'name="recipe" value="2" checked' in page
-    assert 'name="recipe" value="1">' in page              # not ticked
+    assert "Mushroom Butter Sauce Chicken" in page
+    assert "Chicken Stroganoff" not in page.split("<main>")[1]   # not planned
     assert 'name="servings_2" value="8"' in page
+    assert "Make grocery list" in page
+    assert "Clear plan" in page
 
 
 def test_grocery_list_merges_shared_ingredients(client):
-    page = client.get("/grocery?recipe=2&servings_2=4&recipe=3&servings_3=4").get_data(as_text=True)
+    plan_week(client, {2: 4, 3: 4})
+    page = client.get("/grocery").get_data(as_text=True)
 
     assert "<span>18 oz mushrooms, sliced</span>" in page   # 10 + 8
     assert "<span>1 tsp salt</span>" in page
@@ -232,7 +241,8 @@ def test_grocery_list_merges_shared_ingredients(client):
 
 def test_grocery_list_scales_each_recipe(client):
     # Recipe 2 doubled (4 -> 8), recipe 3 as written
-    page = client.get("/grocery?recipe=2&servings_2=8&recipe=3&servings_3=4").get_data(as_text=True)
+    plan_week(client, {2: 8, 3: 4})
+    page = client.get("/grocery").get_data(as_text=True)
 
     assert "<span>1 3/4 lb mushrooms, sliced</span>" in page   # 20 + 8 = 28 oz
     assert "<span>1/2 cup butter</span>" in page               # 8 tbsp
@@ -242,31 +252,18 @@ def test_grocery_list_scales_each_recipe(client):
 def test_grocery_list_rounds_up(client):
     # Quiche (serves 6) at 5 servings: 6 eggs x 5/6 = 5 exactly, but
     # 1/2 cup cream x 5/6 = 5/12 cup (6 2/3 tbsp), which rounds UP to 7 tbsp
-    page = client.get("/grocery?recipe=1&servings_1=5").get_data(as_text=True)
+    plan_week(client, {1: 5})
+    page = client.get("/grocery").get_data(as_text=True)
 
     assert "<span>5 eggs</span>" in page
     assert "<span>7 tbsp heavy cream</span>" in page
 
 
-def test_grocery_list_with_nothing_picked(client):
+def test_grocery_list_with_nothing_planned(client):
     response = client.get("/grocery")
 
     assert response.status_code == 200
-    assert "No recipes picked yet." in response.get_data(as_text=True)
-
-
-@pytest.mark.parametrize(
-    "query",
-    ["recipe=abc", "recipe=999", "recipe=2&servings_2=abc", "recipe=2&recipe=2", "recipe=2&servings_2=0"],
-)
-def test_grocery_list_handles_bad_input(client, query):
-    response = client.get(f"/grocery?{query}")
-
-    assert response.status_code == 200
-    page = response.get_data(as_text=True)
-    if "recipe=2" in query:
-        # Bad servings fall back to 4; a repeated recipe is only counted once
-        assert "<span>10 oz mushrooms, sliced</span>" in page
+    assert "No recipes on this week's plan yet." in response.get_data(as_text=True)
 
 
 # --- US / Metric switch ---
@@ -316,15 +313,18 @@ def test_back_to_original_keeps_metric(client):
 
 
 def test_grocery_list_in_metric(client):
-    page = client.get("/grocery?recipe=2&servings_2=4&units=metric").get_data(as_text=True)
+    plan_week(client, {2: 4})
+    page = client.get("/grocery?units=metric").get_data(as_text=True)
 
     assert "<span>290 g mushrooms, sliced</span>" in page  # 10 oz, rounded up
     assert "/recipes/2?servings=4&amp;units=metric" in page  # recipe links keep metric
-    assert 'href="/grocery?recipe=2&amp;servings_2=4">US</a>' in page  # switch back to US
+    assert 'href="/grocery">US</a>' in page                 # switch back to US
+    assert 'href="/plan?units=metric"' in page              # "Change recipes" keeps metric
 
 
 def test_plan_form_keeps_metric(client):
-    page = client.get("/plan?recipe=2&servings_2=8&units=metric").get_data(as_text=True)
+    plan_week(client, {2: 8})
+    page = client.get("/plan?units=metric").get_data(as_text=True)
 
     assert '<input type="hidden" name="units" value="metric">' in page
 
@@ -332,7 +332,8 @@ def test_plan_form_keeps_metric(client):
 # --- Grocery list polish: aisles, ticks, copy as text ---
 
 def test_grocery_list_has_aisle_headings_in_order(client):
-    page = client.get("/grocery?recipe=1&servings_1=6").get_data(as_text=True)   # quiche
+    plan_week(client, {1: 6})   # quiche
+    page = client.get("/grocery").get_data(as_text=True)
 
     produce = page.index("<h3>Produce</h3>")
     dairy = page.index("<h3>Dairy &amp; Eggs</h3>")
@@ -344,7 +345,8 @@ def test_grocery_list_has_aisle_headings_in_order(client):
 
 
 def test_grocery_list_has_tick_keys_copy_and_clear(client):
-    page = client.get("/grocery?recipe=1&servings_1=6").get_data(as_text=True)
+    plan_week(client, {1: 6})
+    page = client.get("/grocery").get_data(as_text=True)
 
     assert 'data-key="diced ham"' in page
     assert "Copy as text" in page
@@ -401,13 +403,3 @@ def test_home_without_filters_has_no_clear_link(client):
 
     assert "4 recipes" in page
     assert "Clear filters" not in page
-
-
-def test_plan_page_unaffected_by_home_filters(client, db_path):
-    # The plan page always lists every recipe and keeps its ticks,
-    # even if filter values end up in its URL
-    recipe_id = find_recipe_id(db_path, "Chicken Stroganoff")
-    page = client.get(f"/plan?q=tofu&tag=breakfast&recipe={recipe_id}").get_data(as_text=True)
-
-    assert "Greek Yogurt Protein Parfait Bowls" in page
-    assert f'value="{recipe_id}" checked' in page

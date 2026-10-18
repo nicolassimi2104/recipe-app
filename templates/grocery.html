@@ -5,6 +5,13 @@
 {% block content %}
 <h1>Grocery list</h1>
 
+{% if old_picks %}
+{# An old-style link (/grocery?recipe=2...): the list below is this week's
+   saved plan, so say so and point to the plan page to load the link's recipes #}
+<p class="old-link-note">This is an old grocery list link. The list below is for this week's saved plan.
+    <a href="{{ url_for('plan') }}?{{ request.query_string.decode() }}">Load the link's recipes</a></p>
+{% endif %}
+
 {% if picks %}
 <h2>Recipes this week</h2>
 <ul class="picked-recipes">
@@ -26,7 +33,7 @@
     <span class="copy-status" id="copy-status" role="status"></span>
 </div>
 
-<div id="grocery">
+<div id="grocery" data-plan="{{ plan_key }}">
     {% for aisle, items in groups %}
     <section class="aisle">
         <h3>{{ aisle }}</h3>
@@ -54,11 +61,10 @@
 
 <script src="{{ url_for('static', filename='grocery.js') }}"></script>
 {% else %}
-<p>No recipes picked yet.</p>
+<p>No recipes on this week's plan yet. Tap <strong>+ Add to this week</strong> on a recipe first.</p>
 {% endif %}
 
 <div class="actions">
-    {# request.query_string keeps the current picks and servings #}
-    <a href="{{ url_for('plan') }}?{{ request.query_string.decode() }}" class="button secondary">Change recipes</a>
+    <a href="{{ url_for('plan', units=metric_or_none(units)) }}" class="button secondary">Change recipes</a>
 </div>
 {% endblock %}

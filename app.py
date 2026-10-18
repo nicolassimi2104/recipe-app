@@ -25,6 +25,7 @@ from flask import (Flask, Response, abort, redirect, render_template, request,
 import db
 import grocery
 import importer
+import labels
 import units
 
 # Upper limit for the "scale to" box, so a silly number can't make a huge page
@@ -47,6 +48,12 @@ def requested_servings(text, original):
 # (including no value at all, so US is the default).
 def requested_units(text):
     return "metric" if text == "metric" else "us"
+
+
+# For links: url_for leaves out values that are None, so this adds
+# ?units=metric only when metric is on (US is the default).
+def metric_or_none(system):
+    return "metric" if system == "metric" else None
 
 
 # Links for the US / Metric switch: the current page's URL with only the
@@ -102,6 +109,9 @@ def read_recipe_form(form):
         "ingredients": ingredients,
         "steps": steps,
         "tags": db.parse_tags(form.get("tags", "")),
+        # Labels left blank are guessed when saving (see labels.py)
+        "proteins": labels.clean_proteins(form.getlist("protein")),
+        "meal_type": labels.clean_meal_type(form.get("meal_type", "")),
     }
     return recipe, errors
 
@@ -136,9 +146,7 @@ def create_app(db_path=None):
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"   # other websites can't post forms as you
     app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE") == "1"
 
-    # For links in templates: url_for leaves out values that are None, so this
-    # adds ?units=metric only when metric is on (US is the default).
-    app.jinja_env.globals["metric_or_none"] = lambda system: "metric" if system == "metric" else None
+    app.jinja_env.globals["metric_or_none"] = metric_or_none
 
     db.init_db(db_path)
     db.import_seed_data(db_path)  # only does anything when there are no recipes yet
@@ -168,10 +176,20 @@ def create_app(db_path=None):
             picks.append((recipe, servings))
         return picks
 
-    # Templates use this to show the "Log out" link only when there's a password
+    # Values every page can use:
+    #   password_on: show the "Log out" link only when there's a password
+    #   this_week:   {recipe_id: servings} for the "This week (N)" bar and the
+    #                "Add to this week" buttons (None on the login page)
+    #   protein_names, meal_types: for showing and editing labels
     @app.context_processor
-    def login_info():
-        return {"password_on": bool(password)}
+    def page_info():
+        logged_in = not password or session.get("logged_in")
+        return {
+            "password_on": bool(password),
+            "this_week": db.plan_servings(db_path=db_path) if logged_in else None,
+            "protein_names": labels.PROTEINS,
+            "meal_types": labels.MEAL_TYPES,
+        }
 
     # Runs before every page. With a password set, anyone not logged in is sent
     # to /login (the login page itself and the CSS are let through).
@@ -208,13 +226,22 @@ def create_app(db_path=None):
 
     # --- Routes: each @app.route connects a URL to the function that handles it ---
 
-    # Home page with search and tag filter. The filter lives in the URL,
-    # e.g. /?q=chick&tag=dinner&tag=quick, so it survives a refresh and can be bookmarked.
+    # Home page with search, protein chips and tag filter. The filter lives in
+    # the URL, e.g. /?q=chick&protein=chicken&tag=dinner, so it survives a
+    # refresh and can be bookmarked.
     @app.route("/")
     def index():
         query = request.args.get("q", "").strip()
         active_tags = db.parse_tags(",".join(request.args.getlist("tag")))
-        recipes = db.search_recipes(query, active_tags, db_path=db_path)
+        protein = request.args.get("protein", "")
+        if protein not in labels.PROTEINS:
+            protein = ""   # unknown value (old or typed link): show all
+
+        # Search and tags first; the chip counts say how many of THESE
+        # have each protein, so a chip's number is what you get by tapping it
+        matches = db.search_recipes(query, active_tags, db_path=db_path)
+        protein_counts = labels.count_proteins(matches)
+        recipes = [r for r in matches if protein in r["proteins"]] if protein else matches
 
         # Show active tags first (so they're visible when the pills scroll
         # sideways on a phone), then the rest. An active tag that no recipe uses
@@ -227,7 +254,11 @@ def create_app(db_path=None):
                 new_tags = [t for t in active_tags if t != tag]
             else:
                 new_tags = active_tags + [tag]
-            return url_for("index", q=query or None, tag=new_tags)
+            return url_for("index", q=query or None, protein=protein or None, tag=new_tags)
+
+        # Each protein chip keeps the search and tags; "" is the "All" chip
+        def protein_link(key):
+            return url_for("index", q=query or None, protein=key or None, tag=active_tags)
 
         return render_template(
             "index.html",
@@ -237,7 +268,11 @@ def create_app(db_path=None):
             active_tags=active_tags,
             all_tags=active_tags + other_tags,
             toggle_link=toggle_link,
-            filtering=bool(query or active_tags),
+            protein=protein,
+            protein_counts=protein_counts,
+            match_total=len(matches),
+            protein_link=protein_link,
+            filtering=bool(query or active_tags or protein),
             # After importing several recipes: /?imported=3&skipped=1 shows a note
             imported=request.args.get("imported", type=int),
             skipped=request.args.get("skipped", type=int),
@@ -278,7 +313,8 @@ def create_app(db_path=None):
             # Something was wrong: show the form again with what they typed
             return render_template("recipe_form.html", recipe=recipe, errors=errors), 400
 
-        blank = {"name": "", "servings": 4, "ingredients": [], "steps": "", "tags": []}
+        blank = {"name": "", "servings": 4, "ingredients": [], "steps": "", "tags": [],
+                 "proteins": [], "meal_type": ""}
         return render_template("recipe_form.html", recipe=blank, errors=[])
 
     @app.route("/recipes/<int:recipe_id>/edit", methods=["GET", "POST"])
@@ -287,6 +323,16 @@ def create_app(db_path=None):
         if request.method == "POST":
             recipe, errors = read_recipe_form(request.form)
             if not errors:
+                # A label you changed is now yours. One you left as it was is
+                # passed as None, so a guessed label is guessed again from the
+                # new ingredients. "Guess again" ([] and "") resets both.
+                if request.form.get("guess_labels"):
+                    recipe["proteins"], recipe["meal_type"] = [], ""
+                else:
+                    if recipe["proteins"] == existing["proteins"]:
+                        recipe["proteins"] = None
+                    if recipe["meal_type"] == existing["meal_type"]:
+                        recipe["meal_type"] = None
                 db.update_recipe(recipe_id, **recipe, db_path=db_path)
                 return redirect(url_for("recipe_detail", recipe_id=recipe_id))
             recipe["id"] = recipe_id
@@ -387,30 +433,76 @@ def create_app(db_path=None):
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
-    # Pick recipes for the week. Coming back from the grocery list keeps your
-    # ticks and servings, because the same ?recipe=... values are in the URL.
+    # --- This week's plan, saved in the database ---
+    # Buttons on the recipe cards and pages post here, then come back to the
+    # page they were on (the "next" field), so no JavaScript is needed.
+
+    def back_to_page():
+        return redirect(safe_next(request.form.get("next", "")))
+
+    @app.route("/plan/add/<int:recipe_id>", methods=["POST"])
+    def plan_add(recipe_id):
+        recipe = get_recipe_or_404(recipe_id)
+        # The recipe page sends the servings you scaled it to
+        servings = requested_servings(request.form.get("servings"), recipe["servings"])
+        db.add_to_plan(recipe_id, servings, db_path=db_path)
+        return back_to_page()
+
+    @app.route("/plan/remove/<int:recipe_id>", methods=["POST"])
+    def plan_remove(recipe_id):
+        db.remove_from_plan(recipe_id, db_path=db_path)
+        return back_to_page()
+
+    @app.route("/plan/clear", methods=["POST"])
+    def plan_clear():
+        db.clear_plan(db_path=db_path)
+        return redirect(url_for("plan"))
+
+    # The plan page's "Save" buttons: one stays here, one goes on to the list
+    @app.route("/plan/servings", methods=["POST"])
+    def plan_save_servings():
+        for recipe_id, servings in db.plan_servings(db_path=db_path).items():
+            new = requested_servings(request.form.get(f"servings_{recipe_id}"), servings)
+            db.set_plan_servings(recipe_id, new, db_path=db_path)
+        units = metric_or_none(request.form.get("units"))
+        if request.form.get("then") == "grocery":
+            return redirect(url_for("grocery_list", units=units))
+        return redirect(url_for("plan", units=units))
+
+    # Before the plan was saved, it lived in links like /plan?recipe=2&servings_2=8.
+    # Those links still work: the page shows the saved plan plus a button to
+    # add the link's recipes to it.
+    @app.route("/plan/load", methods=["POST"])
+    def plan_load_old_link():
+        for recipe, servings in read_picks(request.form):
+            db.add_to_plan(recipe["id"], servings, db_path=db_path)
+            db.set_plan_servings(recipe["id"], servings, db_path=db_path)
+        return redirect(url_for("plan"))
+
     @app.route("/plan")
     def plan():
-        recipes = db.list_recipes(db_path=db_path)
-        picked = {recipe["id"]: servings for recipe, servings in read_picks(request.args)}
         return render_template(
             "plan.html",
-            recipes=recipes,
-            picked=picked,
+            picks=db.get_plan(db_path=db_path),
+            old_picks=read_picks(request.args),
             max_servings=MAX_SERVINGS,
             units=requested_units(request.args.get("units")),
         )
 
-    # The merged shopping list for the picked recipes. Nothing is saved:
-    # the list is worked out fresh from the URL each time.
+    # The merged shopping list for this week's plan. Worked out fresh from
+    # the saved plan each time, so it always matches the plan page.
     @app.route("/grocery")
     def grocery_list():
-        picks = read_picks(request.args)
+        picks = db.get_plan(db_path=db_path)
         system = requested_units(request.args.get("units"))
         groups = grocery.group_by_aisle(grocery.merge_ingredients(picks, system))
         return render_template(
             "grocery.html",
             picks=picks,
+            old_picks=read_picks(request.args),
+            # Names this exact plan, so ticks are remembered per plan: change a
+            # recipe or its servings and the list starts fresh (see grocery.js)
+            plan_key=",".join(f"{recipe['id']}x{servings}" for recipe, servings in picks),
             groups=groups,
             list_text=grocery.grocery_text(groups),
             units=system,

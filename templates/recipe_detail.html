@@ -1,13 +1,21 @@
 {% extends "base.html" %}
+{% from "_week_button.html" import week_button with context %}
 
 {% block title %}{{ recipe.name }} - Recipe App{% endblock %}
 
 {% block content %}
 <h1>{{ recipe.name }}</h1>
 <div class="meta">
+    {% for key in recipe.proteins %}<a href="{{ url_for('index', protein=key) }}" class="label protein-{{ key }}">{{ protein_names[key] }}</a>{% endfor %}
+    <span class="label meal">{{ recipe.meal_type }}</span>
     <span>Serves {{ recipe.servings }}</span>
     {% for tag in recipe.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
 </div>
+{# Adds it at the servings shown below, so scale first if you want more #}
+{{ week_button(recipe.id, servings=servings) }}
+{% if recipe.id in this_week %}
+<p class="hint">On the plan for {{ this_week[recipe.id] }} servings. <a href="{{ url_for('plan') }}">Change on the plan page</a></p>
+{% endif %}
 
 <h2>Ingredients</h2>
 {% include "_units_toggle.html" %}

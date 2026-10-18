@@ -336,9 +336,9 @@ legend {
     margin: 0.25rem 0;
 }
 
-/* --- Plan week page --- */
+/* --- This week page --- */
 
-/* Checkbox + name on the left, servings box on the right, wrapping on phones */
+/* Name on the left, servings box and Remove on the right, wrapping on phones */
 .plan-list li {
     display: flex;
     flex-wrap: wrap;
@@ -347,15 +347,12 @@ legend {
     gap: 0.5rem;
 }
 
-.plan-pick {
+.plan-row {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    flex: 1 1 12rem;
-    cursor: pointer;
+    gap: 1rem;
 }
 
-.plan-pick input,
 .grocery-list input {
     width: 1.25rem;         /* bigger checkboxes, easier to tap */
     height: 1.25rem;
@@ -571,4 +568,156 @@ legend {
 
 .login-box .button {
     width: 100%;
+}
+
+/* --- Browse by protein and "Add to this week" --- */
+
+/* Compact bar under the header linking to the plan and grocery list */
+.week-bar {
+    padding: 0.4rem 1rem;
+    background: #e3efe8;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.week-bar a {
+    font-weight: bold;
+}
+
+/* Protein chips: like the tag pills but bigger, one swipeable row on phones */
+.protein-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.75rem 0 0.25rem;
+}
+
+.chip {
+    flex: none;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid #2f6f4e;
+    border-radius: 999px;
+    background: #fff;
+    color: #2f6f4e;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.chip.active {
+    background: #2f6f4e;
+    color: #fff;
+}
+
+.chip .count {
+    opacity: 0.7;
+    font-size: 0.85em;
+}
+
+@media (max-width: 600px) {
+    .protein-chips {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 0.4rem;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Protein and meal type labels on cards and recipe pages */
+.label {
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    background: #f1ead9;
+    color: #6b4f12;
+    font-size: 0.8rem;
+    text-decoration: none;
+}
+
+.label.meal {
+    background: #eee;
+    color: #444;
+}
+
+/* The one-tap button on each card */
+.week-form {
+    margin: 0.5rem 0 0;
+}
+
+.week-button {
+    padding: 0.45rem 0.9rem;   /* big enough to tap */
+    border: 2px solid #2f6f4e;
+    border-radius: 6px;
+    background: #fff;
+    color: #2f6f4e;
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.week-button.on {
+    background: #2f6f4e;
+    color: #fff;
+}
+
+/* A button that looks like a link (Remove on the plan page) */
+.link-button {
+    padding: 0.25rem;
+    border: none;
+    background: none;
+    color: #b3261e;
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.clear-plan {
+    margin-left: auto;
+}
+
+.old-link-note {
+    padding: 0.75rem;
+    border-radius: 6px;
+    background: #fff6d6;
+}
+
+.old-link-note p {
+    margin: 0 0 0.5rem;
+}
+
+/* Protein checkboxes on the recipe form */
+.protein-picks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+}
+
+/* ".recipe-form" in front so these win over the form's full-width boxes */
+.recipe-form .check-chip,
+.recipe-form .check-line {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.recipe-form .check-chip input,
+.recipe-form .check-line input {
+    width: auto;
+    margin: 0;
+}
+
+.recipe-form .check-chip {
+    padding: 0.3rem 0.7rem;
+    border: 1px solid #bbb;
+    border-radius: 999px;
+    background: #fff;
+}
+
+.labels-fieldset select {
+    display: block;
+    margin-top: 0.25rem;
+    padding: 0.4rem;
+    font: inherit;
 }

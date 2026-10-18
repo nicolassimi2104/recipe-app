@@ -1,34 +1,62 @@
 {% extends "base.html" %}
 
-{% block title %}Plan week - Recipe App{% endblock %}
+{% block title %}This week - Recipe App{% endblock %}
 
 {% block content %}
-<h1>Plan your week</h1>
-<p class="hint">Tick the recipes you'll cook and set how many servings of each.</p>
+<h1>This week</h1>
 
-{% if recipes %}
-{# A plain GET form: the button goes to /grocery?recipe=1&servings_1=8&... #}
-<form method="get" action="{{ url_for('grocery_list') }}">
-    {# Keep the metric choice when coming back from a metric grocery list #}
+{# An old-style plan link (/plan?recipe=2&servings_2=8, from before the plan
+   was saved): offer to add its recipes instead of ignoring them #}
+{% if old_picks %}
+<form method="post" action="{{ url_for('plan_load_old_link') }}" class="old-link-note">
+    <p>This link is from an older plan with
+        {% for recipe, servings in old_picks %}{{ recipe.name }}{{ ", " if not loop.last }}{% endfor %}.</p>
+    {% for recipe, servings in old_picks %}
+    <input type="hidden" name="recipe" value="{{ recipe.id }}">
+    <input type="hidden" name="servings_{{ recipe.id }}" value="{{ servings }}">
+    {% endfor %}
+    <button type="submit" class="button secondary">Add {{ 'it' if old_picks|length == 1 else 'them' }} to this week</button>
+</form>
+{% endif %}
+
+{% if picks %}
+<p class="hint">Set how many servings of each. The grocery list scales to match.</p>
+<form method="post" action="{{ url_for('plan_save_servings') }}" id="plan-form">
     {% if units == 'metric' %}<input type="hidden" name="units" value="metric">{% endif %}
-    <ul class="recipe-list plan-list">
-        {% for recipe in recipes %}
-        <li>
-            <label class="plan-pick">
-                <input type="checkbox" name="recipe" value="{{ recipe.id }}"{% if recipe.id in picked %} checked{% endif %}>
-                <span class="recipe-name">{{ recipe.name }}</span>
-            </label>
+</form>
+{# The remove buttons are their own little forms, so the servings boxes and
+   the save buttons point at #plan-form with the form="" attribute #}
+<ul class="recipe-list plan-list">
+    {% for recipe, servings in picks %}
+    <li>
+        <a href="{{ url_for('recipe_detail', recipe_id=recipe.id, servings=servings, units=metric_or_none(units)) }}"
+           class="recipe-name">{{ recipe.name }}</a>
+        <div class="plan-row">
             <label class="plan-servings">
                 Servings
-                <input type="number" name="servings_{{ recipe.id }}" value="{{ picked.get(recipe.id, recipe.servings) }}"
+                <input type="number" name="servings_{{ recipe.id }}" value="{{ servings }}" form="plan-form"
                        min="1" max="{{ max_servings }}" inputmode="numeric">
             </label>
-        </li>
-        {% endfor %}
-    </ul>
-    <button type="submit" class="button">Make grocery list</button>
-</form>
+            <form method="post" action="{{ url_for('plan_remove', recipe_id=recipe.id) }}">
+                <input type="hidden" name="next" value="{{ url_for('plan', units=metric_or_none(units)) }}">
+                <button type="submit" class="link-button">Remove</button>
+            </form>
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+<div class="actions">
+    <button type="submit" form="plan-form" name="then" value="grocery" class="button">Make grocery list</button>
+    <button type="submit" form="plan-form" class="button secondary">Save servings</button>
+</div>
+<div class="actions">
+    <a href="{{ url_for('index') }}">+ Add more recipes</a>
+    <form method="post" action="{{ url_for('plan_clear') }}" class="clear-plan">
+        <button type="submit" class="button danger-outline">Clear plan</button>
+    </form>
+</div>
 {% else %}
-<p>No recipes yet. <a href="{{ url_for('recipe_new') }}">Add one</a> first.</p>
+<p>Nothing planned yet. Tap <strong>+ Add to this week</strong> on any recipe to start.</p>
+<p><a href="{{ url_for('index') }}" class="button">Browse recipes</a></p>
 {% endif %}
 {% endblock %}
