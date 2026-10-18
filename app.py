@@ -26,6 +26,7 @@ import db
 import grocery
 import importer
 import labels
+import suggestions
 import units
 
 # Upper limit for the "scale to" box, so a silly number can't make a huge page
@@ -260,8 +261,17 @@ def create_app(db_path=None):
         def protein_link(key):
             return url_for("index", q=query or None, protein=key or None, tag=active_tags)
 
+        # Fresh finds: if they're over a week old, read the feeds again in the
+        # background (the page doesn't wait). The strip is hidden while filtering.
+        try:
+            suggestions.refresh_if_stale(db_path)
+        except Exception:
+            pass   # a refresh problem must never break the home page
+        filtering = bool(query or active_tags or protein)
+
         return render_template(
             "index.html",
+            **fresh_finds_values(show=not filtering),
             recipes=recipes,
             total=db.count_recipes(db_path=db_path),
             query=query,
@@ -272,11 +282,65 @@ def create_app(db_path=None):
             protein_counts=protein_counts,
             match_total=len(matches),
             protein_link=protein_link,
-            filtering=bool(query or active_tags or protein),
+            filtering=filtering,
             # After importing several recipes: /?imported=3&skipped=1 shows a note
             imported=request.args.get("imported", type=int),
             skipped=request.args.get("skipped", type=int),
         )
+
+    # Values for the Fresh finds strip (templates/_fresh_finds.html).
+    # After a failed import the home page gets ?find_failed=<id> (the page had
+    # no recipe, so it was dismissed) or ?find_offline=<id> (couldn't reach it).
+    def fresh_finds_values(show=True):
+        def note_about(param):
+            suggestion_id = request.args.get(param, type=int)
+            return db.get_suggestion(suggestion_id, db_path=db_path) if suggestion_id else None
+        return {
+            "finds": db.new_suggestions(suggestions.STRIP_SIZE, db_path=db_path) if show else [],
+            "finds_refreshing": suggestions.is_refreshing(db_path),
+            "find_failed": note_about("find_failed"),
+            "find_offline": note_about("find_offline"),
+        }
+
+    # Just the strip, so the home page can fill it in once a first refresh
+    # finishes, without reloading the whole page (static/fresh_finds.js)
+    @app.route("/fresh-finds")
+    def fresh_finds_strip():
+        return render_template("_fresh_finds.html", **fresh_finds_values())
+
+    # One click: read the recipe from the site, save it (labels are guessed
+    # as it's saved) and open it
+    @app.route("/fresh-finds/<int:suggestion_id>/import", methods=["POST"])
+    def fresh_find_import(suggestion_id):
+        suggestion = db.get_suggestion(suggestion_id, db_path=db_path)
+        if suggestion is None:
+            abort(404)
+        # A double click: the first click already saved it
+        if suggestion["status"] == "imported" and suggestion["recipe_id"]:
+            return redirect(url_for("recipe_detail", recipe_id=suggestion["recipe_id"]))
+        try:
+            recipe_id = suggestions.import_suggestion(suggestion, db_path)
+        except importer.SiteUnreachable:
+            return redirect(url_for("index", find_offline=suggestion_id, _anchor="fresh-finds"))
+        except importer.ImportFailed:
+            return redirect(url_for("index", find_failed=suggestion_id, _anchor="fresh-finds"))
+        return redirect(url_for("recipe_detail", recipe_id=recipe_id, found=suggestion_id))
+
+    # Dismissed ones never come back; the next one slides into the strip
+    @app.route("/fresh-finds/<int:suggestion_id>/dismiss", methods=["POST"])
+    def fresh_find_dismiss(suggestion_id):
+        if db.get_suggestion(suggestion_id, db_path=db_path) is None:
+            abort(404)
+        db.set_suggestion_status(suggestion_id, "dismissed", db_path=db_path)
+        return redirect(url_for("index", _anchor="fresh-finds"))
+
+    # Just imported from Fresh finds (?found=<suggestion id>): the recipe page
+    # says where it came from and has a one-click Delete. Only when that
+    # suggestion really became this recipe.
+    def found_from(recipe_id):
+        suggestion_id = request.args.get("found", type=int)
+        suggestion = db.get_suggestion(suggestion_id, db_path=db_path) if suggestion_id else None
+        return suggestion if suggestion and suggestion["recipe_id"] == recipe_id else None
 
     @app.route("/recipes/<int:recipe_id>")
     def recipe_detail(recipe_id):
@@ -300,6 +364,7 @@ def create_app(db_path=None):
             max_servings=MAX_SERVINGS,
             units=system,
             units_links=units_links("recipe_detail", recipe_id=recipe_id),
+            found=found_from(recipe_id),
         )
 
     # GET shows the empty form; POST is what happens when you press "Save"

@@ -80,6 +80,12 @@ class ImportFailed(Exception):
     """A friendly message for the user when importing from a link doesn't work."""
 
 
+class SiteUnreachable(ImportFailed):
+    """The site couldn't be reached or had a hiccup (no internet, too slow,
+    server error), so trying again later may work. Fresh finds keeps the
+    suggestion in that case; for any other ImportFailed it's dismissed."""
+
+
 # ---------------------------------------------------------------------------
 # Ingredient lines: "1 1/2 cups flour, sifted" -> amount / unit / name
 # ---------------------------------------------------------------------------
@@ -337,7 +343,7 @@ def recipes_to_json(recipes):
 # Duplicates and saving
 # ---------------------------------------------------------------------------
 
-def _name_key(name):
+def name_key(name):
     # "Pancakes " and "pancakes" count as the same name
     return " ".join(name.split()).casefold()
 
@@ -348,10 +354,10 @@ def find_duplicates(recipes, existing_names):
     A name counts as taken if a saved recipe has it, or an earlier recipe in
     the same import does. Capitals and extra spaces are ignored.
     """
-    taken = {_name_key(n) for n in existing_names}
+    taken = {name_key(n) for n in existing_names}
     duplicates = set()
     for position, recipe in enumerate(recipes):
-        key = _name_key(recipe["name"])
+        key = name_key(recipe["name"])
         if key in taken:
             duplicates.add(position)
         taken.add(key)
@@ -404,10 +410,10 @@ def fetch_html(url, timeout=URL_TIMEOUT):
             raise ImportFailed("That site blocked the request (it doesn't allow apps to read its pages).")
         if e.code == 404:
             raise ImportFailed("That page wasn't found (error 404). Check the link.")
-        raise ImportFailed(f"The site answered with an error ({e.code}). Try again later.")
+        raise SiteUnreachable(f"The site answered with an error ({e.code}). Try again later.")
     except (urllib.error.URLError, TimeoutError, OSError):
         # URLError: no internet, or the site name doesn't exist. TimeoutError: too slow.
-        raise ImportFailed("Couldn't reach that site. Check your internet connection and the link.")
+        raise SiteUnreachable("Couldn't reach that site. Check your internet connection and the link.")
     except (ValueError, http.client.HTTPException):
         # A link Python can't use, or a site that sent back garbled data
         raise ImportFailed("Couldn't read that link. Check that it's copied correctly.")

@@ -27,7 +27,8 @@ The app is local-first for now: it runs on the owner's computer and stays free.
 No hosting or deploy work unless asked (DEPLOY.md stays for later).
 A. (DONE) Browse by protein + one-tap "Add to this week" (plan saved in the database;
    label guessing rules are in labels.py)
-B. Fresh finds: suggestions that refresh themselves when the app opens, with one-click import
+B. (DONE) Fresh finds: suggestions that refresh themselves when the app opens, with one-click import
+   (feed list and skip-words at the top of suggestions.py; tests run with the internet switched off)
 C. Side dish pairing
 
 ## Rules

@@ -4,6 +4,17 @@
 {% block title %}{{ recipe.name }} - Recipe App{% endblock %}
 
 {% block content %}
+{% if found %}
+{# Just imported from Fresh finds: one click to undo if it's not for you.
+   This posts straight to the delete page's "Yes, delete" step. #}
+<div class="found-note" role="status">
+    <p>Imported from <a href="{{ found.url }}" target="_blank" rel="noopener noreferrer">{{ found.source or "the web" }}</a>.
+        The labels were guessed; check them with Edit.</p>
+    <form method="post" action="{{ url_for('recipe_delete', recipe_id=recipe.id) }}">
+        <button type="submit" class="button danger-outline">Delete this recipe</button>
+    </form>
+</div>
+{% endif %}
 <h1>{{ recipe.name }}</h1>
 <div class="meta">
     {% for key in recipe.proteins %}<a href="{{ url_for('index', protein=key) }}" class="label protein-{{ key }}">{{ protein_names[key] }}</a>{% endfor %}

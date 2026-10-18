@@ -1,0 +1,51 @@
+{# The "Fresh finds" strip on the home page: 3 recipe ideas from recipe
+   sites. Also served on its own at /fresh-finds, so fresh_finds.js can
+   swap it in when a first refresh finishes. Import and Dismiss are tiny
+   forms, so they work without JavaScript. #}
+<section id="fresh-finds" class="fresh-finds"
+         {% if finds_refreshing and not finds %}data-refreshing="1"{% endif %}>
+    {% if find_failed %}
+    <p class="find-note" role="status">
+        Sorry, we couldn't read a recipe from "{{ find_failed.title }}" ({{ find_failed.source }}),
+        so it's been taken off Fresh finds. You can still
+        <a href="{{ find_failed.url }}" target="_blank" rel="noopener noreferrer">read it on the site</a>.
+    </p>
+    {% endif %}
+    {% if find_offline %}
+    <p class="find-note" role="status">
+        Couldn't reach {{ find_offline.source or "that site" }} just now. Check your internet
+        connection and try Import again.
+    </p>
+    {% endif %}
+
+    {% if finds %}
+    <h2>Fresh finds</h2>
+    <ul class="find-cards">
+        {% for find in finds %}
+        <li class="find-card">
+            {% if find.image %}
+            {# no-referrer: some sites block pictures shown on other sites #}
+            <img src="{{ find.image }}" alt="" class="find-image" loading="lazy" referrerpolicy="no-referrer">
+            {% else %}
+            <div class="find-image" aria-hidden="true"></div>
+            {% endif %}
+            <div class="find-body">
+                {# The title opens the original post, to have a look first #}
+                <a href="{{ find.url }}" class="find-title" target="_blank" rel="noopener noreferrer">{{ find.title }}</a>
+                <span class="find-source">{{ find.source }}</span>
+                <div class="find-buttons">
+                    <form method="post" action="{{ url_for('fresh_find_import', suggestion_id=find.id) }}" class="find-import">
+                        <button type="submit" class="week-button on">Import</button>
+                    </form>
+                    <form method="post" action="{{ url_for('fresh_find_dismiss', suggestion_id=find.id) }}">
+                        <button type="submit" class="week-button">Dismiss</button>
+                    </form>
+                </div>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% elif finds_refreshing %}
+    <p class="hint">Looking for fresh recipe ideas&hellip;</p>
+    {% endif %}
+</section>

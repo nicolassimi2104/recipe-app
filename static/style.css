@@ -721,3 +721,114 @@ legend {
     padding: 0.4rem;
     font: inherit;
 }
+
+/* --- Fresh finds strip on the home page --- */
+
+.fresh-finds h2 {
+    margin: 1rem 0 0.5rem;
+}
+
+/* Three cards side by side, picture on top... */
+.find-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.6rem;
+    margin: 0 0 0.5rem;
+    padding: 0;
+    list-style: none;
+}
+
+.find-card {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+}
+
+.find-image {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;      /* crop to fill, never stretch */
+    background: #e3efe8;    /* shows while loading, or when there's no picture */
+}
+
+.find-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.5rem 0.6rem 0.6rem;
+}
+
+.find-title {
+    font-weight: bold;
+    line-height: 1.3;
+    text-decoration: none;
+}
+
+.find-source {
+    color: #555;
+    font-size: 0.85rem;
+}
+
+/* Buttons at the bottom of the card, even when titles differ in length */
+.find-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: auto;
+    padding-top: 0.3rem;
+}
+
+.find-buttons form {
+    margin: 0;
+}
+
+.find-buttons .week-button:disabled {
+    opacity: 0.7;
+    cursor: wait;
+}
+
+/* ...and on phones, one card per row with a small picture on the left */
+@media (max-width: 600px) {
+    .find-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .find-card {
+        flex-direction: row;
+    }
+
+    .find-image {
+        flex: 0 0 6rem;
+        width: 6rem;
+        aspect-ratio: auto;
+    }
+}
+
+.find-note {
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background: #fff4e0;
+}
+
+/* "Imported from ..." box at the top of a recipe that came from Fresh finds */
+.found-note {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 6px;
+    background: #e6f2ea;
+}
+
+.found-note p,
+.found-note form {
+    margin: 0;
+}

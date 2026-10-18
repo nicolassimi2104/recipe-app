@@ -17,6 +17,9 @@
 </p>
 {% endif %}
 
+{% include "_fresh_finds.html" %}
+<script src="{{ url_for('static', filename='fresh_finds.js') }}" defer></script>
+
 {% if total %}
 {# Protein chips: links like the tag pills, keeping the search and tags.
    The number is how many recipes you'd see after tapping it. #}
