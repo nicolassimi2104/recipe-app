@@ -25,7 +25,8 @@ in plain language and keep code simple and readable.
 ## V3 roadmap (build in this order, one branch + PR each)
 The app is local-first for now: it runs on the owner's computer and stays free.
 No hosting or deploy work unless asked (DEPLOY.md stays for later).
-A. Browse by protein + one-tap "Add to this week" (plan saved in the database)
+A. (DONE) Browse by protein + one-tap "Add to this week" (plan saved in the database;
+   label guessing rules are in labels.py)
 B. Fresh finds: suggestions that refresh themselves when the app opens, with one-click import
 C. Side dish pairing
 
