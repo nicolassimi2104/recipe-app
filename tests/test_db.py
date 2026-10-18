@@ -376,6 +376,38 @@ def test_backfill_only_runs_once_per_database(db_path):
     assert db.get_recipe(recipe_id, db_path=db_path)["proteins"] == []
 
 
+def test_reguess_fixes_old_guesses_but_not_hand_set_ones(db_path):
+    chicken = [{"amount": "1 1/2", "unit": "lb", "name": "boneless, skinless chicken breasts"}]
+    guessed = make_recipe(db_path, name="Marry Me Chicken", ingredients=chicken, tags=[])
+    by_hand = make_recipe(db_path, name="Odd One", ingredients=chicken, tags=[],
+                          proteins=["fish"])
+    # Pretend the guessed one was saved by the old rules, which said vegetarian
+    conn = db.get_connection(db_path)
+    with conn:
+        conn.execute("UPDATE recipe_proteins SET protein = 'vegetarian' WHERE recipe_id = ?",
+                     (guessed,))
+    conn.close()
+
+    assert db.reguess_proteins(db_path) == 1
+    assert db.get_recipe(guessed, db_path=db_path)["proteins"] == ["chicken"]
+    assert db.get_recipe(by_hand, db_path=db_path)["proteins"] == ["fish"]
+    assert db.reguess_proteins(db_path) == 0        # nothing left to fix
+
+
+def test_upgrading_from_version_2_reguesses_proteins(db_path):
+    chicken = [{"amount": "1 1/2", "unit": "lb", "name": "boneless, skinless chicken breasts"}]
+    recipe_id = make_recipe(db_path, name="Marry Me Chicken", ingredients=chicken, tags=[])
+    conn = db.get_connection(db_path)
+    with conn:
+        conn.execute("UPDATE recipe_proteins SET protein = 'vegetarian'")
+    conn.execute("PRAGMA user_version = 2")
+    conn.close()
+
+    db.init_db(db_path)
+
+    assert db.get_recipe(recipe_id, db_path=db_path)["proteins"] == ["chicken"]
+
+
 # --- This week's plan ---
 
 def test_add_and_remove_from_plan(db_path):

@@ -202,6 +202,16 @@ def _has_any(words, keywords):
     return any(_find(words, keyword) for keyword in keywords)
 
 
+# An ingredient name split into its comma parts, as word lists, with notes
+# in brackets dropped: "boneless, skinless chicken breasts (sliced in half)"
+# -> [["boneless"], ["skinless", "chicken", "breasts"]]. Each part is
+# checked on its own, so "stock" in "shrimp, peeled (save shells for
+# stock)" isn't about the shrimp, but the chicken after "boneless," counts.
+def _name_parts(ingredient_name):
+    text = re.sub(r"\([^)]*\)?", " ", ingredient_name)   # an unclosed "(" drops the rest
+    return [_words(part) for part in text.split(",")]
+
+
 # ---------------------------------------------------------------------------
 # Step 1: which proteins is this ingredient?
 # ---------------------------------------------------------------------------
@@ -210,14 +220,11 @@ def _has_any(words, keywords):
 # {"chicken"}, "turkey bacon" -> {"eggs-other"}, "chicken broth" -> set().
 # Eggs come back as "egg" (not a label yet; step 4 decides).
 def proteins_in(ingredient_name):
-    # Only look at the part before a comma or bracket: in "shrimp, peeled
-    # (save the shells for stock)" the word "stock" isn't about the shrimp
-    head = re.split(r"[,(]", ingredient_name, maxsplit=1)[0]
-    words = _words(head)
-    if MEAT_FREE_WORDS & set(words):
+    parts = _name_parts(ingredient_name)
+    if any(MEAT_FREE_WORDS & set(words) for words in parts):
         return set()
 
-    def is_flavouring(end):
+    def is_flavouring(words, end):
         # The word right after the meat: "chicken BROTH". For "chicken OR
         # vegetable broth", look at the last word instead.
         after = words[end:end + 1]
@@ -226,7 +233,8 @@ def proteins_in(ingredient_name):
         return bool(NOT_THE_MEAT_AFTER & set(after))
 
     def is_real(keyword):
-        return any(not is_flavouring(end) for _, end in _find(words, keyword))
+        return any(not is_flavouring(words, end)
+                   for words in parts for _, end in _find(words, keyword))
 
     found = {}  # label -> the keywords that matched
     for label, keywords in MEAT_WORDS.items():
@@ -377,9 +385,8 @@ def guess_cuisine(name, ingredients, tags=()):
 # True if this ingredient really is one of keywords, not just flavoured
 # with it ("rice" yes, "rice vinegar" no) and not a tiny garnish.
 def _is_on_plate(ingredient, keywords):
-    head = re.split(r"[,(]", ingredient["name"], maxsplit=1)[0]
-    words = _words(head)
     real = any(not (NOT_THE_FOOD_AFTER & set(words[end:end + 1]))
+               for words in _name_parts(ingredient["name"])
                for keyword in keywords for _, end in _find(words, keyword))
     return real and estimate_grams(ingredient) >= PLATE_MIN_GRAMS
 
