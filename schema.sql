@@ -49,3 +49,16 @@ CREATE TABLE IF NOT EXISTS plan_items (
     recipe_id INTEGER NOT NULL UNIQUE REFERENCES recipes(id) ON DELETE CASCADE,
     servings  INTEGER NOT NULL
 );
+
+-- Fresh finds: recipe ideas read from recipe-site feeds (see suggestions.py).
+-- Rows are never deleted, so a post you imported or dismissed doesn't come back.
+CREATE TABLE IF NOT EXISTS suggestions (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    title      TEXT    NOT NULL,
+    url        TEXT    NOT NULL UNIQUE,       -- the same post is only saved once
+    source     TEXT    NOT NULL DEFAULT '',   -- site name, e.g. 'Budget Bytes'
+    image      TEXT    NOT NULL DEFAULT '',   -- picture link, or blank
+    fetched_at TEXT    NOT NULL,              -- when it was found, e.g. '2026-10-18T09:30:00' (UTC)
+    status     TEXT    NOT NULL DEFAULT 'new', -- new, imported or dismissed
+    recipe_id  INTEGER REFERENCES recipes(id) ON DELETE SET NULL  -- the recipe it became
+);

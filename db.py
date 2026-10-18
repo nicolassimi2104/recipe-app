@@ -484,3 +484,79 @@ def clear_plan(db_path=DEFAULT_DB_PATH):
             conn.execute("DELETE FROM plan_items")
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Fresh finds: suggestions from recipe-site feeds (the reading is in suggestions.py)
+# ---------------------------------------------------------------------------
+
+SUGGESTION_STATUSES = ("new", "imported", "dismissed")
+
+
+def add_suggestions(suggestions, fetched_at, db_path=DEFAULT_DB_PATH):
+    """Save new suggestions ({"title", "url", "source", "image"}) in the order given.
+
+    A link that's already saved (new, imported or dismissed) is skipped.
+    Returns how many were added.
+    """
+    conn = get_connection(db_path)
+    try:
+        added = 0
+        with conn:
+            for s in suggestions:
+                # INSERT OR IGNORE: url is UNIQUE, so a link we already have is skipped
+                cursor = conn.execute(
+                    "INSERT OR IGNORE INTO suggestions (title, url, source, image, fetched_at)"
+                    " VALUES (?, ?, ?, ?, ?)",
+                    (s["title"], s["url"], s.get("source", ""), s.get("image", ""), fetched_at),
+                )
+                added += cursor.rowcount
+        return added
+    finally:
+        conn.close()
+
+
+def newest_suggestion_time(db_path=DEFAULT_DB_PATH):
+    """When the newest suggestion was found (text like "2026-10-18T09:30:00"), or None."""
+    conn = get_connection(db_path)
+    try:
+        return conn.execute("SELECT MAX(fetched_at) FROM suggestions").fetchone()[0]
+    finally:
+        conn.close()
+
+
+def new_suggestions(limit=3, db_path=DEFAULT_DB_PATH):
+    """The newest suggestions not yet imported or dismissed, as dicts."""
+    conn = get_connection(db_path)
+    try:
+        rows = conn.execute(
+            "SELECT * FROM suggestions WHERE status = 'new'"
+            " ORDER BY fetched_at DESC, id LIMIT ?",
+            (limit,),
+        )
+        return [dict(row) for row in rows]
+    finally:
+        conn.close()
+
+
+def get_suggestion(suggestion_id, db_path=DEFAULT_DB_PATH):
+    """One suggestion as a dict, or None if not found."""
+    conn = get_connection(db_path)
+    try:
+        row = conn.execute("SELECT * FROM suggestions WHERE id = ?", (suggestion_id,)).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def set_suggestion_status(suggestion_id, status, recipe_id=None, db_path=DEFAULT_DB_PATH):
+    """Mark a suggestion "new", "imported" (with the recipe it became) or "dismissed"."""
+    if status not in SUGGESTION_STATUSES:
+        raise ValueError(f"Unknown suggestion status: {status!r}")
+    conn = get_connection(db_path)
+    try:
+        with conn:
+            conn.execute("UPDATE suggestions SET status = ?, recipe_id = ? WHERE id = ?",
+                         (status, recipe_id, suggestion_id))
+    finally:
+        conn.close()
