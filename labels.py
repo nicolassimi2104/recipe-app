@@ -14,6 +14,9 @@ no Flask or database code, so it's easy to test. The steps:
 4. Eggs count when they're the main thing: 3 or more (or an egg dish like
    an omelet), not a dessert, and at least as big as any meat.
 5. No meat, fish or main eggs: "vegetarian".
+
+Cuisine and side type (for pairing sides, see pairing.py) are guessed the
+same way, from keyword lists: CUISINE_WORDS, STARCH_WORDS and VEG_WORDS.
 """
 
 import re
@@ -107,6 +110,64 @@ SIDE_NAMES = ["side", "salad", "slaw", "coleslaw", "mashed", "pilaf", "fries", "
               "asparagus", "broccoli"]
 OTHER_NAMES = ["sauce", "dressing", "dip", "salsa", "pesto", "vinaigrette", "hummus",
                "guacamole", "marinade", "seasoning", "lemonade"]
+
+# Cuisines, in the order shown on the form
+CUISINES = ["american", "mexican", "asian", "italian", "mediterranean", "other"]
+
+# Words that point to a cuisine. A word in the name or tags counts 3 points,
+# one in an ingredient 1 point, so one "soy sauce" alone isn't enough (it
+# needs a second hint, like "ginger"), but "Chicken Tacos" is.
+CUISINE_WORDS = {
+    "american": ["bbq", "barbecue", "burger", "meatloaf", "mac and cheese", "pot roast",
+                 "sloppy joe", "buffalo", "ranch", "cornbread", "biscuit", "gravy",
+                 "cajun", "southern", "american", "hot dog", "chowder"],
+    "mexican": ["taco", "burrito", "enchilada", "quesadilla", "fajita", "tortilla", "salsa",
+                "chipotle", "jalapeno", "carnitas", "tex mex", "mexican", "pico de gallo",
+                "cotija", "queso", "taco seasoning", "tostada", "elote", "guacamole",
+                "cilantro", "cumin", "black bean", "pinto bean", "chili powder"],
+    "asian": ["soy sauce", "ginger", "sesame", "teriyaki", "stir fry", "fried rice", "miso",
+              "gochujang", "sriracha", "hoisin", "fish sauce", "coconut milk", "curry",
+              "ramen", "pad thai", "bok choy", "rice vinegar", "lemongrass", "kimchi",
+              "asian", "thai", "chinese", "japanese", "korean", "vietnamese", "indian",
+              "garam masala", "tikka", "udon", "lo mein", "dumpling"],
+    "italian": ["pasta", "spaghetti", "lasagna", "parmesan", "mozzarella", "marinara",
+                "risotto", "pesto", "gnocchi", "ricotta", "italian", "alfredo", "penne",
+                "fettuccine", "linguine", "rigatoni", "parmigiana", "polenta", "bolognese",
+                "prosciutto", "pancetta", "tuscan", "piccata", "marsala"],
+    "mediterranean": ["feta", "hummus", "tahini", "chickpea", "kalamata", "tzatziki",
+                      "couscous", "za atar", "shawarma", "falafel", "pita", "greek",
+                      "mediterranean", "harissa", "sumac", "souvlaki", "gyro", "orzo"],
+}
+# Phrases that use a cuisine word without meaning that cuisine
+NOT_A_CUISINE_HINT = ["greek yogurt"]
+CUISINE_MIN_POINTS = 2
+
+# Side types, in the order shown on the form
+SIDE_TYPES = ["starch", "vegetable", "salad", "other"]
+
+# Filling, carb-heavy foods
+STARCH_WORDS = ["rice", "potato", "potatoes", "pasta", "noodle", "spaghetti", "macaroni",
+                "penne", "fettuccine", "linguine", "rigatoni", "orzo", "bread", "bun",
+                "tortilla", "pita", "naan", "quinoa", "couscous", "polenta", "gnocchi",
+                "barley", "farro", "grits", "cornbread", "biscuit", "sweet potato"]
+# Real vegetables. Onion, garlic and mushrooms don't count: they flavour a
+# dish but don't make it "have veg" the way broccoli on the plate does.
+VEG_WORDS = ["broccoli", "spinach", "kale", "green bean", "pea", "carrot", "zucchini",
+             "squash", "bell pepper", "cauliflower", "cabbage", "brussels sprout",
+             "asparagus", "lettuce", "arugula", "cucumber", "tomato", "eggplant",
+             "bok choy", "chard", "celery", "okra", "edamame", "greens", "corn",
+             "snap pea", "snow pea", "beet", "romaine"]
+# The word after a starch or veg that means it's only a flavouring or
+# coating: "rice vinegar", "bread crumbs", "potato starch", "tomato paste",
+# "corn tortillas" (the tortillas are the starch; the corn isn't a vegetable)
+NOT_THE_FOOD_AFTER = {"vinegar", "wine", "crumbs", "flour", "starch", "sauce", "paste",
+                      "water", "paper", "puree", "flakes", "powder", "seasoning", "seed",
+                      "seeds", "oil", "syrup", "chips", "ketchup", "noodles", "tortilla",
+                      "tortillas", "bread", "muffin", "muffins"}
+# Smaller than this (in rough grams, see estimate_grams) is a garnish, not
+# a real part of the plate: "2 tbsp breadcrumbs", "1 tbsp chopped celery"
+PLATE_MIN_GRAMS = 60
+SALAD_NAMES = ["salad", "slaw", "coleslaw"]
 
 
 # ---------------------------------------------------------------------------
@@ -287,6 +348,68 @@ def guess_meal_type(name, tags=(), has_meat=False):
 
 
 # ---------------------------------------------------------------------------
+# Cuisine and side type
+# ---------------------------------------------------------------------------
+
+# Points for each cuisine found in text (see CUISINE_WORDS).
+def _cuisine_points(text, points_each, points):
+    text = text.lower()
+    for phrase in NOT_A_CUISINE_HINT:
+        text = text.replace(phrase, " ")
+    words = _words(text)
+    for cuisine, keywords in CUISINE_WORDS.items():
+        if _has_any(words, keywords):
+            points[cuisine] += points_each
+
+
+# The cuisine with the most points, or "other" if nothing stands out.
+# A tie goes to the cuisine listed first in CUISINE_WORDS.
+def guess_cuisine(name, ingredients, tags=()):
+    points = Counter()
+    _cuisine_points(name, 3, points)
+    _cuisine_points(" ".join(tags), 3, points)
+    for ing in ingredients:
+        _cuisine_points(ing["name"], 1, points)
+    best = max(CUISINE_WORDS, key=lambda cuisine: points[cuisine])
+    return best if points[best] >= CUISINE_MIN_POINTS else "other"
+
+
+# True if this ingredient really is one of keywords, not just flavoured
+# with it ("rice" yes, "rice vinegar" no) and not a tiny garnish.
+def _is_on_plate(ingredient, keywords):
+    head = re.split(r"[,(]", ingredient["name"], maxsplit=1)[0]
+    words = _words(head)
+    real = any(not (NOT_THE_FOOD_AFTER & set(words[end:end + 1]))
+               for keyword in keywords for _, end in _find(words, keyword))
+    return real and estimate_grams(ingredient) >= PLATE_MIN_GRAMS
+
+
+# What a dish already has: (has_starch, has_veg).
+def plate_parts(ingredients):
+    has_starch = any(_is_on_plate(ing, STARCH_WORDS) for ing in ingredients)
+    has_veg = any(_is_on_plate(ing, VEG_WORDS) for ing in ingredients)
+    return has_starch, has_veg
+
+
+# starch, vegetable, salad or other. The name is checked first ("Garlic
+# Roasted Potatoes"), then what's in it.
+def guess_side_type(name, ingredients):
+    words = _words(name)
+    if _has_any(words, SALAD_NAMES):
+        return "salad"
+    if _has_any(words, STARCH_WORDS):
+        return "starch"
+    if _has_any(words, VEG_WORDS):
+        return "vegetable"
+    has_starch, has_veg = plate_parts(ingredients)
+    if has_starch:
+        return "starch"
+    if has_veg:
+        return "vegetable"
+    return "other"
+
+
+# ---------------------------------------------------------------------------
 # Reading the form and the home page chips
 # ---------------------------------------------------------------------------
 
@@ -298,6 +421,15 @@ def clean_proteins(values):
 # Keep a meal type only if it's one we know, else "" (meaning "guess it").
 def clean_meal_type(value):
     return value if value in MEAL_TYPES else ""
+
+
+# Same for cuisine and side type
+def clean_cuisine(value):
+    return value if value in CUISINES else ""
+
+
+def clean_side_type(value):
+    return value if value in SIDE_TYPES else ""
 
 
 # How many recipes have each protein: {"chicken": 2, "beef": 0, ...}.

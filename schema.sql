@@ -10,7 +10,11 @@ CREATE TABLE IF NOT EXISTS recipes (
     meal_type TEXT   NOT NULL DEFAULT '',  -- main, side, breakfast, dessert or other
     -- 1 means you picked the label yourself, so the app never re-guesses it
     proteins_by_hand  INTEGER NOT NULL DEFAULT 0,
-    meal_type_by_hand INTEGER NOT NULL DEFAULT 0
+    meal_type_by_hand INTEGER NOT NULL DEFAULT 0,
+    cuisine   TEXT   NOT NULL DEFAULT '',  -- american, mexican, asian, italian, mediterranean or other
+    cuisine_by_hand   INTEGER NOT NULL DEFAULT 0,
+    side_type TEXT   NOT NULL DEFAULT '',  -- sides only: starch, vegetable, salad or other
+    fridge_days INTEGER                    -- how many days it keeps in the fridge, or blank
 );
 
 CREATE TABLE IF NOT EXISTS ingredients (
@@ -61,4 +65,10 @@ CREATE TABLE IF NOT EXISTS suggestions (
     fetched_at TEXT    NOT NULL,              -- when it was found, e.g. '2026-10-18T09:30:00' (UTC)
     status     TEXT    NOT NULL DEFAULT 'new', -- new, imported or dismissed
     recipe_id  INTEGER REFERENCES recipes(id) ON DELETE SET NULL  -- the recipe it became
+);
+
+-- One row for each one-time job that has already run, e.g. 'side-bank'
+-- (the starter side dishes), so it never runs again, even if you delete them.
+CREATE TABLE IF NOT EXISTS done_once (
+    name TEXT PRIMARY KEY
 );
