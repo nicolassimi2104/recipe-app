@@ -35,6 +35,11 @@ FEEDS = [
     ("Gimme Some Oven", "https://www.gimmesomeoven.com/feed/"),
 ]
 
+# Posts with these words in the title are round-ups or news, not one recipe
+# ("25 Fall Dessert Recipes", "7 Day Meal Plan"), so they're skipped.
+SKIP_TITLE_WORDS = ["recipes", "meal plan", "round up", "roundup", "favorite things",
+                    "gift guide", "cookbook"]
+
 # Read the feeds again when the newest suggestion is older than this
 STALE_AFTER = timedelta(days=7)
 # After a try (say the internet was down), wait this long before the next one
@@ -103,7 +108,7 @@ def parse_feed(raw, source):
             body = (item.findtext(f"{ATOM}content") or "") + (item.findtext(f"{ATOM}summary") or "")
         title = clean_title(title)
         url = clean_url(link)
-        if title and url:
+        if title and url and not looks_like_roundup(title):
             found.append({"title": title, "url": url, "source": source,
                           "image": _find_image(item, body)})
     return found
@@ -131,6 +136,12 @@ def _find_image(item, body):
         if url and urlparse(url).scheme in ("http", "https"):
             return url.strip()
     return ""
+
+
+def looks_like_roundup(title):
+    """True for titles like "25 Fall Dessert Recipes" (see SKIP_TITLE_WORDS)."""
+    words = " ".join(re.findall(r"[a-z]+", title.lower()))
+    return any(re.search(rf"\b{re.escape(skip)}\b", words) for skip in SKIP_TITLE_WORDS)
 
 
 def clean_title(text):

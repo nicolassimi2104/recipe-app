@@ -122,6 +122,22 @@ def test_parse_skips_items_without_title_or_web_link():
     assert [s["title"] for s in suggestions.parse_feed(raw, "A")] == ["Good"]
 
 
+@pytest.mark.parametrize("title, skipped", [
+    ("25 Fall Dessert Recipes", True),
+    ("7 Day High Protein Diet Meal Plan", True),
+    ("459: Nine Favorite Things.", True),
+    ("Love & Lemons Cookbook is out now!", True),
+    ("Weekly Round-Up", True),
+    ("Lentil Curry", False),
+    ("3 Ingredient Peanut Butter Cookies", False),
+    ("Recipe-Box Chili", False),   # "recipe" on its own is fine
+])
+def test_roundup_posts_are_skipped(title, skipped):
+    assert suggestions.looks_like_roundup(title) is skipped
+    raw = rss((title.replace("&", "&amp;"), "https://a.example/post"))
+    assert (suggestions.parse_feed(raw, "A") == []) is skipped
+
+
 def test_parse_keeps_only_newest_few(monkeypatch):
     monkeypatch.setattr(suggestions, "MAX_PER_FEED", 2)
     raw = rss(("One", "https://a.example/1"), ("Two", "https://a.example/2"), ("Three", "https://a.example/3"))
