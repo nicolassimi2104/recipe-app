@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_week_button.html" import week_button, label_chips with context %}
 
 {% block content %}
 <div class="page-head">
@@ -17,11 +18,23 @@
 {% endif %}
 
 {% if total %}
+{# Protein chips: links like the tag pills, keeping the search and tags.
+   The number is how many recipes you'd see after tapping it. #}
+<nav class="protein-chips" aria-label="Filter by protein">
+    <a href="{{ protein_link('') }}" class="chip{% if not protein %} active{% endif %}"
+       {% if not protein %}aria-current="true"{% endif %}>All <span class="count">{{ match_total }}</span></a>
+    {% for key, label in protein_names.items() %}
+    <a href="{{ protein_link(key) }}" class="chip{% if key == protein %} active{% endif %}"
+       {% if key == protein %}aria-current="true"{% endif %}>{{ label }} <span class="count">{{ protein_counts[key] }}</span></a>
+    {% endfor %}
+</nav>
+
 {# A plain GET form: pressing Search goes to /?q=chick&tag=dinner, no JavaScript needed #}
 <form method="get" action="{{ url_for('index') }}" class="search-form" role="search">
     <input type="search" name="q" value="{{ query }}" placeholder="Search name or ingredient"
            aria-label="Search recipes by name or ingredient">
-    {# Keep the selected tags when searching #}
+    {# Keep the selected protein and tags when searching #}
+    {% if protein %}<input type="hidden" name="protein" value="{{ protein }}">{% endif %}
     {% for tag in active_tags %}<input type="hidden" name="tag" value="{{ tag }}">{% endfor %}
     <button type="submit" class="button">Search</button>
 </form>
@@ -51,20 +64,25 @@
 {% if recipes %}
 <ul class="recipe-list">
     {% for recipe in recipes %}
-    <li>
+    <li id="recipe-{{ recipe.id }}" class="recipe-card">
         <a href="{{ url_for('recipe_detail', recipe_id=recipe.id) }}" class="recipe-name">{{ recipe.name }}</a>
         <div class="meta">
+            {{ label_chips(recipe) }}
             <span>Serves {{ recipe.servings }}</span>
             {% for tag in recipe.tags %}<a href="{{ toggle_link(tag) }}" class="tag{% if tag in active_tags %} active{% endif %}">{{ tag }}</a>{% endfor %}
         </div>
+        {{ week_button(recipe.id, anchor="#recipe-" ~ recipe.id) }}
     </li>
     {% endfor %}
 </ul>
 {% elif filtering %}
 <div class="no-results">
-    <p>No recipes match
+    {# e.g. 'No recipes match "tofu" with tag breakfast.' or 'No Beef recipes yet.' #}
+    <p>No {% if protein %}{{ protein_names[protein] }} {% endif %}recipes
+        {%- if query or active_tags %} match
         {%- if query %} "{{ query }}"{% endif %}
-        {%- if active_tags %} with tag{{ '' if active_tags|length == 1 else 's' }} {{ active_tags|join(', ') }}{% endif %}.</p>
+        {%- if active_tags %} with tag{{ '' if active_tags|length == 1 else 's' }} {{ active_tags|join(', ') }}{% endif %}
+        {%- else %} yet{% endif %}.</p>
     <p><a href="{{ url_for('index') }}">Clear filters</a> to see all recipes.</p>
 </div>
 {% else %}

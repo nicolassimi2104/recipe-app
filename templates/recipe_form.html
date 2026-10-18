@@ -46,6 +46,37 @@
         <input type="text" name="tags" value="{{ recipe.tags | join(', ') }}">
     </label>
 
+    {# Labels for browsing. Blank ones are guessed from the ingredients when you save. #}
+    <fieldset class="labels-fieldset">
+        <legend>Labels</legend>
+        <p class="hint">
+            {% if editing %}Guessed from the ingredients unless you change them. Anything you change here stays as you set it.
+            {% else %}Leave blank and the app guesses them from the ingredients.{% endif %}
+        </p>
+        <div class="protein-picks" role="group" aria-label="Protein">
+            {% for key, label in protein_names.items() %}
+            <label class="check-chip">
+                <input type="checkbox" name="protein" value="{{ key }}"{% if key in recipe.proteins %} checked{% endif %}>
+                {{ label }}
+            </label>
+            {% endfor %}
+        </div>
+        <label>Meal type
+            <select name="meal_type">
+                {% if not editing %}<option value="">Guess for me</option>{% endif %}
+                {% for kind in meal_types %}
+                <option value="{{ kind }}"{% if kind == recipe.meal_type %} selected{% endif %}>{{ kind }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        {% if editing %}
+        <label class="check-line">
+            <input type="checkbox" name="guess_labels" value="1">
+            Forget my choices and guess both again
+        </label>
+        {% endif %}
+    </fieldset>
+
     <div class="actions">
         <button type="submit" class="button">Save</button>
         <a href="{{ url_for('recipe_detail', recipe_id=recipe.id) if editing else url_for('index') }}" class="button secondary">Cancel</a>

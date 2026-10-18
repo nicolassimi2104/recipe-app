@@ -4,6 +4,8 @@ import json
 import sqlite3
 from pathlib import Path
 
+import labels
+
 BASE_DIR = Path(__file__).parent
 DEFAULT_DB_PATH = BASE_DIR / "recipes.db"
 SCHEMA_PATH = BASE_DIR / "schema.sql"
@@ -22,13 +24,44 @@ def get_connection(db_path=DEFAULT_DB_PATH):
     return conn
 
 
+# Columns added to the recipes table after the first version. A database made
+# before then doesn't have them, and CREATE TABLE IF NOT EXISTS won't add them.
+NEW_RECIPE_COLUMNS = {
+    "meal_type": "TEXT NOT NULL DEFAULT ''",
+    "proteins_by_hand": "INTEGER NOT NULL DEFAULT 0",
+    "meal_type_by_hand": "INTEGER NOT NULL DEFAULT 0",
+}
+
+# Bump this when an upgrade step is added below. SQLite keeps the number in
+# the file itself ("PRAGMA user_version"), so each step only runs once.
+DB_VERSION = 1
+
+
 def init_db(db_path=DEFAULT_DB_PATH):
-    """Create the tables if they don't exist yet. Safe to run every startup."""
+    """Create the tables if they don't exist yet, and upgrade an older database.
+
+    Safe to run every startup: nothing is ever deleted.
+    """
     conn = get_connection(db_path)
     try:
         conn.executescript(SCHEMA_PATH.read_text())
+        existing = {row["name"] for row in conn.execute("PRAGMA table_info(recipes)")}
+        with conn:
+            for column, definition in NEW_RECIPE_COLUMNS.items():
+                if column not in existing:
+                    conn.execute(f"ALTER TABLE recipes ADD COLUMN {column} {definition}")
+        version = conn.execute("PRAGMA user_version").fetchone()[0]
     finally:
         conn.close()
+
+    if version < 1:
+        backfill_labels(db_path)   # label the recipes saved before labels existed
+    if version < DB_VERSION:
+        conn = get_connection(db_path)
+        try:
+            conn.execute(f"PRAGMA user_version = {DB_VERSION}")
+        finally:
+            conn.close()
 
 
 def import_seed_data(db_path=DEFAULT_DB_PATH, json_path=SEED_PATH):
@@ -111,15 +144,92 @@ def _save_ingredients(conn, recipe_id, ingredients):
 
 
 # ---------------------------------------------------------------------------
+# Labels: protein and meal type (the guessing rules are in labels.py)
+# ---------------------------------------------------------------------------
+
+def _proteins_for(conn, recipe_id):
+    """Protein labels for one recipe, in chip order."""
+    rows = conn.execute("SELECT protein FROM recipe_proteins WHERE recipe_id = ?", (recipe_id,))
+    return labels.clean_proteins({row["protein"] for row in rows})
+
+
+def _save_labels(conn, recipe_id, name, ingredients, tags, proteins=(), meal_type=""):
+    """Save a recipe's labels. Any left blank are guessed from the recipe.
+
+    Labels you picked are marked "by hand"; guessed ones aren't, so they
+    can be guessed again when the ingredients change.
+    """
+    proteins = labels.clean_proteins(proteins)
+    meal_type = labels.clean_meal_type(meal_type)
+    guessed_proteins, guessed_meal_type = labels.guess_labels(
+        name, ingredients, tags, meal_type or None
+    )
+    conn.execute(
+        "UPDATE recipes SET meal_type = ?, proteins_by_hand = ?, meal_type_by_hand = ?"
+        " WHERE id = ?",
+        (meal_type or guessed_meal_type, int(bool(proteins)), int(bool(meal_type)), recipe_id),
+    )
+    conn.execute("DELETE FROM recipe_proteins WHERE recipe_id = ?", (recipe_id,))
+    for protein in proteins or guessed_proteins:
+        conn.execute(
+            "INSERT INTO recipe_proteins (recipe_id, protein) VALUES (?, ?)", (recipe_id, protein)
+        )
+
+
+def backfill_labels(db_path=DEFAULT_DB_PATH):
+    """Guess labels for recipes that don't have any yet (saved before labels existed).
+
+    Only blank labels are filled in. A label set by hand is never changed,
+    and neither is one that's already there. Returns how many recipes changed.
+    """
+    conn = get_connection(db_path)
+    try:
+        rows = conn.execute(
+            "SELECT id, meal_type, proteins_by_hand, meal_type_by_hand FROM recipes"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    changed = 0
+    for row in rows:
+        recipe = get_recipe(row["id"], db_path=db_path)
+        fill_meal_type = not row["meal_type"] and not row["meal_type_by_hand"]
+        fill_proteins = not recipe["proteins"] and not row["proteins_by_hand"]
+        if not (fill_meal_type or fill_proteins):
+            continue
+
+        guessed_proteins, guessed_meal_type = labels.guess_labels(
+            recipe["name"], recipe["ingredients"], recipe["tags"], row["meal_type"] or None
+        )
+        conn = get_connection(db_path)
+        try:
+            with conn:
+                if fill_meal_type:
+                    conn.execute("UPDATE recipes SET meal_type = ? WHERE id = ?",
+                                 (guessed_meal_type, row["id"]))
+                if fill_proteins:
+                    for protein in guessed_proteins:
+                        conn.execute("INSERT INTO recipe_proteins (recipe_id, protein)"
+                                     " VALUES (?, ?)", (row["id"], protein))
+        finally:
+            conn.close()
+        changed += 1
+    return changed
+
+
+# ---------------------------------------------------------------------------
 # Recipes: create / read / update / delete
 # ---------------------------------------------------------------------------
 
-def create_recipe(name, servings, ingredients, steps, tags, db_path=DEFAULT_DB_PATH):
+def create_recipe(name, servings, ingredients, steps, tags, proteins=(), meal_type="",
+                  db_path=DEFAULT_DB_PATH):
     """Add a new recipe and return its id.
 
     ingredients: list of {"amount": "1/3", "unit": "cup", "name": "flour"}
     steps: one string, one step per line
     tags: list of tag names (already cleaned by parse_tags)
+    proteins, meal_type: labels picked by hand. Leave them blank (the
+        default, and what imports do) and they're guessed.
     """
     conn = get_connection(db_path)
     try:
@@ -132,6 +242,7 @@ def create_recipe(name, servings, ingredients, steps, tags, db_path=DEFAULT_DB_P
             recipe_id = cursor.lastrowid
             _save_ingredients(conn, recipe_id, ingredients)
             _save_tags(conn, recipe_id, tags)
+            _save_labels(conn, recipe_id, name, ingredients, tags, proteins, meal_type)
         return recipe_id
     finally:
         conn.close()
@@ -151,6 +262,7 @@ def get_recipe(recipe_id, db_path=DEFAULT_DB_PATH):
         )
         recipe["ingredients"] = [dict(r) for r in ingredient_rows]
         recipe["tags"] = _tags_for(conn, recipe_id)
+        recipe["proteins"] = _proteins_for(conn, recipe_id)
         return recipe
     finally:
         conn.close()
@@ -200,6 +312,8 @@ def search_recipes(query="", tags=(), db_path=DEFAULT_DB_PATH):
     query: matches part of the recipe name OR any ingredient name, ignoring case.
            Blank means "don't filter by text".
     tags:  the recipe must have ALL of these tags. Empty means "don't filter by tag".
+    Each recipe has id, name, servings, meal_type, tags and proteins.
+    The home page's protein chips filter this list further (see app.py).
     """
     query = query.strip()
     tags = parse_tags(",".join(tags))  # lowercase, trimmed, no duplicates
@@ -232,7 +346,7 @@ def search_recipes(query="", tags=(), db_path=DEFAULT_DB_PATH):
         )
         params += tags + [len(tags)]
 
-    sql = "SELECT id, name, servings FROM recipes"
+    sql = "SELECT id, name, servings, meal_type FROM recipes"
     if conditions:
         sql += " WHERE " + " AND ".join(conditions)
     sql += " ORDER BY name"
@@ -243,17 +357,35 @@ def search_recipes(query="", tags=(), db_path=DEFAULT_DB_PATH):
         for row in conn.execute(sql, params):
             recipe = dict(row)
             recipe["tags"] = _tags_for(conn, recipe["id"])
+            recipe["proteins"] = _proteins_for(conn, recipe["id"])
             recipes.append(recipe)
         return recipes
     finally:
         conn.close()
 
 
-def update_recipe(recipe_id, name, servings, ingredients, steps, tags, db_path=DEFAULT_DB_PATH):
-    """Replace a recipe's details, ingredients and tags with the new values."""
+def update_recipe(recipe_id, name, servings, ingredients, steps, tags, proteins=None,
+                  meal_type=None, db_path=DEFAULT_DB_PATH):
+    """Replace a recipe's details, ingredients and tags with the new values.
+
+    proteins, meal_type:
+        None (the default) means "you didn't change it": a label set by hand
+            stays as it is, and a guessed one is guessed again from the new
+            ingredients.
+        A value means you picked it by hand. A blank value ([] or "") means
+            "guess it for me" from now on.
+    """
     conn = get_connection(db_path)
     try:
         with conn:
+            current = conn.execute(
+                "SELECT meal_type, proteins_by_hand, meal_type_by_hand FROM recipes WHERE id = ?",
+                (recipe_id,),
+            ).fetchone()
+            if proteins is None:
+                proteins = _proteins_for(conn, recipe_id) if current["proteins_by_hand"] else []
+            if meal_type is None:
+                meal_type = current["meal_type"] if current["meal_type_by_hand"] else ""
             conn.execute(
                 "UPDATE recipes SET name = ?, servings = ?, steps = ? WHERE id = ?",
                 (name, servings, steps, recipe_id),
@@ -263,15 +395,92 @@ def update_recipe(recipe_id, name, servings, ingredients, steps, tags, db_path=D
             conn.execute("DELETE FROM recipe_tags WHERE recipe_id = ?", (recipe_id,))
             _save_ingredients(conn, recipe_id, ingredients)
             _save_tags(conn, recipe_id, tags)
+            _save_labels(conn, recipe_id, name, ingredients, tags, proteins, meal_type)
     finally:
         conn.close()
 
 
 def delete_recipe(recipe_id, db_path=DEFAULT_DB_PATH):
-    """Delete a recipe. ON DELETE CASCADE also removes its ingredients and tag links."""
+    """Delete a recipe. ON DELETE CASCADE also removes its ingredients, tag
+    and protein links, and takes it off this week's plan."""
     conn = get_connection(db_path)
     try:
         with conn:
             conn.execute("DELETE FROM recipes WHERE id = ?", (recipe_id,))
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# This week's plan (one plan, saved in the plan_items table)
+# ---------------------------------------------------------------------------
+
+def plan_servings(db_path=DEFAULT_DB_PATH):
+    """What's on the plan, as {recipe_id: servings}. Quick, for buttons and counts."""
+    conn = get_connection(db_path)
+    try:
+        rows = conn.execute("SELECT recipe_id, servings FROM plan_items ORDER BY id")
+        return {row["recipe_id"]: row["servings"] for row in rows}
+    finally:
+        conn.close()
+
+
+def get_plan(db_path=DEFAULT_DB_PATH):
+    """The plan as (recipe, servings) pairs in the order you added them.
+
+    recipe is the full dict from get_recipe, so this is exactly what
+    grocery.merge_ingredients needs.
+    """
+    return [
+        (get_recipe(recipe_id, db_path=db_path), servings)
+        for recipe_id, servings in plan_servings(db_path=db_path).items()
+    ]
+
+
+def add_to_plan(recipe_id, servings=None, db_path=DEFAULT_DB_PATH):
+    """Put a recipe on the plan (servings defaults to the recipe's own).
+
+    Already on it: nothing changes. Returns False if the recipe doesn't exist.
+    """
+    conn = get_connection(db_path)
+    try:
+        row = conn.execute("SELECT servings FROM recipes WHERE id = ?", (recipe_id,)).fetchone()
+        if row is None:
+            return False
+        with conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO plan_items (recipe_id, servings) VALUES (?, ?)",
+                (recipe_id, servings or row["servings"]),
+            )
+        return True
+    finally:
+        conn.close()
+
+
+def remove_from_plan(recipe_id, db_path=DEFAULT_DB_PATH):
+    conn = get_connection(db_path)
+    try:
+        with conn:
+            conn.execute("DELETE FROM plan_items WHERE recipe_id = ?", (recipe_id,))
+    finally:
+        conn.close()
+
+
+def set_plan_servings(recipe_id, servings, db_path=DEFAULT_DB_PATH):
+    """Change the servings of a recipe that's on the plan (does nothing if it isn't)."""
+    conn = get_connection(db_path)
+    try:
+        with conn:
+            conn.execute("UPDATE plan_items SET servings = ? WHERE recipe_id = ?",
+                         (servings, recipe_id))
+    finally:
+        conn.close()
+
+
+def clear_plan(db_path=DEFAULT_DB_PATH):
+    conn = get_connection(db_path)
+    try:
+        with conn:
+            conn.execute("DELETE FROM plan_items")
     finally:
         conn.close()

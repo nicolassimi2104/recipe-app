@@ -22,8 +22,16 @@ in plain language and keep code simple and readable.
 5. (DONE) Phone access: free cloud deploy with a simple password gate and recipe export/backup
    (hosted on PythonAnywhere free tier; owner's setup steps are in DEPLOY.md)
 
+## V3 roadmap (build in this order, one branch + PR each)
+The app is local-first for now: it runs on the owner's computer and stays free.
+No hosting or deploy work unless asked (DEPLOY.md stays for later).
+A. (DONE) Browse by protein + one-tap "Add to this week" (plan saved in the database;
+   label guessing rules are in labels.py)
+B. Fresh finds: suggestions that refresh themselves when the app opens, with one-click import
+C. Side dish pairing
+
 ## Rules
-- Plan is in the URL (query params), not the database; keep it that way unless asked
+- This week's plan is saved in the database (one current plan); old ?recipe=... plan URLs must not crash
 - Add tests for any new logic (units, merging, parsing, filtering, import)
 - Keep recipes.json as seed data; never overwrite the user's recipes.db
 - Never commit secrets (passwords, keys, .env). Use environment variables.

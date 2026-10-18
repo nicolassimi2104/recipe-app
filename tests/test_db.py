@@ -247,3 +247,178 @@ def test_list_tags_only_used_tags_alphabetical(search_db):
 
     assert db.list_tags(db_path=search_db) == ["breakfast", "dinner", "quick"]
     assert db.count_recipes(db_path=search_db) == 2
+
+
+# --- Labels: guessed on save, kept when set by hand ---
+
+CHICKEN = [{"amount": "1", "unit": "lb", "name": "chicken thighs"},
+           {"amount": "1", "unit": "cup", "name": "chicken broth"}]
+BEEF = [{"amount": "1", "unit": "lb", "name": "ground beef"}]
+
+
+def test_new_recipe_gets_guessed_labels(db_path):
+    recipe_id = make_recipe(db_path, name="Chicken Dinner", ingredients=CHICKEN, tags=["dinner"])
+    recipe = db.get_recipe(recipe_id, db_path=db_path)
+
+    assert recipe["proteins"] == ["chicken"]
+    assert recipe["meal_type"] == "main"
+    assert recipe["proteins_by_hand"] == 0
+
+
+def test_labels_picked_when_creating_are_kept(db_path):
+    recipe_id = make_recipe(db_path, ingredients=CHICKEN, proteins=["beef"], meal_type="side")
+    recipe = db.get_recipe(recipe_id, db_path=db_path)
+
+    assert recipe["proteins"] == ["beef"]
+    assert recipe["meal_type"] == "side"
+    assert recipe["proteins_by_hand"] == 1
+    assert recipe["meal_type_by_hand"] == 1
+
+
+def test_editing_ingredients_re_guesses_guessed_labels(db_path):
+    recipe_id = make_recipe(db_path, ingredients=CHICKEN, tags=[])
+    db.update_recipe(recipe_id, "Burgers", 2, BEEF, "", [], db_path=db_path)
+
+    assert db.get_recipe(recipe_id, db_path=db_path)["proteins"] == ["beef"]
+
+
+def test_editing_ingredients_keeps_hand_picked_labels(db_path):
+    recipe_id = make_recipe(db_path, ingredients=CHICKEN, tags=[], proteins=["pork"], meal_type="side")
+    db.update_recipe(recipe_id, "Burgers", 2, BEEF, "", [], db_path=db_path)
+    recipe = db.get_recipe(recipe_id, db_path=db_path)
+
+    assert recipe["proteins"] == ["pork"]
+    assert recipe["meal_type"] == "side"
+
+
+def test_blank_labels_on_edit_mean_guess_again(db_path):
+    recipe_id = make_recipe(db_path, ingredients=BEEF, tags=[], proteins=["pork"], meal_type="side")
+    db.update_recipe(recipe_id, "Burgers", 2, BEEF, "", [], proteins=[], meal_type="", db_path=db_path)
+    recipe = db.get_recipe(recipe_id, db_path=db_path)
+
+    assert recipe["proteins"] == ["beef"]
+    assert recipe["meal_type"] == "main"
+    assert recipe["proteins_by_hand"] == 0
+
+
+def test_search_results_include_labels(db_path):
+    make_recipe(db_path, name="Burgers", ingredients=BEEF, tags=[])
+    (recipe,) = db.search_recipes(db_path=db_path)
+    assert recipe["proteins"] == ["beef"]
+    assert recipe["meal_type"] == "main"
+
+
+# --- Upgrading an older database and the one-time backfill ---
+
+OLD_SCHEMA = """
+CREATE TABLE recipes (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
+                      servings INTEGER NOT NULL DEFAULT 1, steps TEXT NOT NULL DEFAULT '');
+CREATE TABLE ingredients (id INTEGER PRIMARY KEY AUTOINCREMENT, recipe_id INTEGER NOT NULL,
+                          position INTEGER NOT NULL DEFAULT 0, amount TEXT NOT NULL DEFAULT '',
+                          unit TEXT NOT NULL DEFAULT '', name TEXT NOT NULL);
+CREATE TABLE tags (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE);
+CREATE TABLE recipe_tags (recipe_id INTEGER NOT NULL, tag_id INTEGER NOT NULL,
+                          PRIMARY KEY (recipe_id, tag_id));
+INSERT INTO recipes (name, servings, steps) VALUES ('Old Chicken Dish', 4, 'Cook.');
+INSERT INTO ingredients (recipe_id, amount, unit, name) VALUES (1, '2', 'lb', 'chicken thighs');
+INSERT INTO tags (name) VALUES ('dessert');
+"""
+
+
+def test_old_database_is_upgraded_and_labelled(tmp_path):
+    path = tmp_path / "old.db"
+    conn = db.get_connection(path)
+    conn.executescript(OLD_SCHEMA)
+    conn.close()
+
+    db.init_db(path)
+    recipe = db.get_recipe(1, db_path=path)
+
+    assert recipe["name"] == "Old Chicken Dish"     # nothing lost
+    assert recipe["ingredients"][0]["name"] == "chicken thighs"
+    assert recipe["proteins"] == ["chicken"]
+    assert recipe["meal_type"] == "main"
+    assert db.plan_servings(db_path=path) == {}     # the plan table exists too
+    db.init_db(path)                                # running it again is fine
+
+
+def test_backfill_fills_blanks_but_never_overwrites_hand_set_labels(db_path):
+    by_hand = make_recipe(db_path, name="Chicken Thing", ingredients=CHICKEN, tags=[],
+                          proteins=["fish"], meal_type="dessert")
+    guessed = make_recipe(db_path, name="Burgers", ingredients=BEEF, tags=[])
+    # Pretend both were saved before labels existed: wipe the guessed one's
+    # labels, and the hand-set one's proteins (an odd state, but it must survive)
+    conn = db.get_connection(db_path)
+    with conn:
+        conn.execute("DELETE FROM recipe_proteins WHERE recipe_id = ?", (guessed,))
+        conn.execute("UPDATE recipes SET meal_type = '' WHERE id = ?", (guessed,))
+    conn.close()
+
+    assert db.backfill_labels(db_path) == 1
+
+    assert db.get_recipe(guessed, db_path=db_path)["proteins"] == ["beef"]
+    assert db.get_recipe(guessed, db_path=db_path)["meal_type"] == "main"
+    hand = db.get_recipe(by_hand, db_path=db_path)
+    assert hand["proteins"] == ["fish"]
+    assert hand["meal_type"] == "dessert"
+    assert db.backfill_labels(db_path) == 0         # nothing left to fill
+
+
+def test_backfill_only_runs_once_per_database(db_path):
+    recipe_id = make_recipe(db_path, ingredients=BEEF, tags=[])
+    conn = db.get_connection(db_path)
+    with conn:
+        conn.execute("DELETE FROM recipe_proteins")
+    conn.close()
+
+    db.init_db(db_path)   # already at the current version: no backfill
+
+    assert db.get_recipe(recipe_id, db_path=db_path)["proteins"] == []
+
+
+# --- This week's plan ---
+
+def test_add_and_remove_from_plan(db_path):
+    first = make_recipe(db_path, servings=4)
+    second = make_recipe(db_path, name="Waffles", servings=2)
+
+    assert db.add_to_plan(second, db_path=db_path)
+    assert db.add_to_plan(first, servings=8, db_path=db_path)
+    assert db.plan_servings(db_path=db_path) == {second: 2, first: 8}   # order added
+
+    db.remove_from_plan(second, db_path=db_path)
+    assert db.plan_servings(db_path=db_path) == {first: 8}
+
+
+def test_adding_twice_keeps_one_entry_and_its_servings(db_path):
+    recipe_id = make_recipe(db_path, servings=4)
+    db.add_to_plan(recipe_id, servings=6, db_path=db_path)
+    db.add_to_plan(recipe_id, db_path=db_path)
+
+    assert db.plan_servings(db_path=db_path) == {recipe_id: 6}
+
+
+def test_adding_a_missing_recipe_does_nothing(db_path):
+    assert db.add_to_plan(999, db_path=db_path) is False
+    assert db.plan_servings(db_path=db_path) == {}
+
+
+def test_plan_servings_can_change_and_plan_can_be_cleared(db_path):
+    recipe_id = make_recipe(db_path)
+    db.add_to_plan(recipe_id, db_path=db_path)
+    db.set_plan_servings(recipe_id, 10, db_path=db_path)
+
+    ((recipe, servings),) = db.get_plan(db_path=db_path)
+    assert recipe["name"] == "Pancakes"
+    assert servings == 10
+
+    db.clear_plan(db_path=db_path)
+    assert db.get_plan(db_path=db_path) == []
+
+
+def test_deleting_a_recipe_takes_it_off_the_plan(db_path):
+    recipe_id = make_recipe(db_path)
+    db.add_to_plan(recipe_id, db_path=db_path)
+    db.delete_recipe(recipe_id, db_path=db_path)
+
+    assert db.plan_servings(db_path=db_path) == {}

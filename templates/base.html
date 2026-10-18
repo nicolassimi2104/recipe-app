@@ -12,11 +12,18 @@
         <a href="{{ url_for('index') }}" class="logo">Recipe App</a>
         <nav>
             <a href="{{ url_for('index') }}">Recipes</a>
-            <a href="{{ url_for('plan') }}">Plan week</a>
+            <a href="{{ url_for('plan') }}">This week</a>
             <a href="{{ url_for('import_recipes') }}">Import</a>
             {% if password_on and session.logged_in %}<a href="{{ url_for('logout') }}">Log out</a>{% endif %}
         </nav>
     </header>
+    {# Compact bar under the header on every page (not the login page) #}
+    {% if this_week is not none %}
+    <div class="week-bar">
+        <a href="{{ url_for('plan') }}">This week ({{ this_week|length }})</a>
+        {% if this_week %}&middot; <a href="{{ url_for('grocery_list') }}">Grocery list</a>{% endif %}
+    </div>
+    {% endif %}
     <main>
         {% block content %}{% endblock %}
     </main>
