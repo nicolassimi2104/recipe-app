@@ -49,5 +49,6 @@ C. (DONE) Side dish pairing: "Sides that fit" on main dishes, starter sides seed
 - Don't pause for plan approval; decide sensibly and record decisions in the PR
 
 ## Run
-python app.py  (then open http://localhost:5000)
+python app.py  (then open http://localhost:5000), or double-click start_app.bat
+(the Desktop "Recipe App" shortcut runs it; make_shortcut.ps1 recreates the shortcut)
 Tests: python -m pytest  (activate venv first; Windows/PowerShell)
