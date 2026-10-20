@@ -9,6 +9,8 @@ None of them are needed for local use:
     DB_PATH       where the SQLite file lives (default: recipes.db next to this file)
     PORT          port for "python app.py" (default: 5000)
     SESSION_COOKIE_SECURE=1  only send the login cookie over https (set this when hosted)
+    DATABASE_URL  on Render: keep a copy of the database in Postgres (see cloud_save.py)
+    RESTORE_FILE  on Render: JSON backup to load if Postgres is empty (see RENDER.md)
 """
 
 import hmac
@@ -22,6 +24,7 @@ from urllib.parse import urlencode
 from flask import (Flask, Response, abort, redirect, render_template, request,
                    session, url_for)
 
+import cloud_save
 import db
 import grocery
 import importer
@@ -168,10 +171,38 @@ def create_app(db_path=None):
 
     app.jinja_env.globals["metric_or_none"] = metric_or_none
 
+    # On Render the files are wiped on every restart, so the database is also
+    # kept in Postgres (see cloud_save.py). Locally there's no DATABASE_URL
+    # and cloud is None, so this is all skipped.
+    cloud = cloud_save.store_from_env()
+    if cloud:
+        restored = cloud_save.restore_on_startup(db_path, cloud)
+        app.logger.warning("Recipes restored from: %s", restored)
+
     db.init_db(db_path)
     db.import_seed_data(db_path)  # only does anything when there are no recipes yet
     if ADD_STARTER_SIDES:
         db.seed_side_bank(db_path)  # the starter side dishes, added only once ever
+
+    if cloud:
+        # A brand-new app (nothing restored) only has the sample recipes, so
+        # don't save yet: that way a backup file added a bit later still
+        # gets loaded on the next restart
+        if restored != "nothing":
+            cloud_save.save_now(db_path, cloud)
+
+        # Every change in the app is a submitted form (POST), so save a copy
+        # after each one that worked
+        @app.after_request
+        def save_to_cloud(response):
+            if request.method == "POST" and response.status_code < 400:
+                try:
+                    cloud_save.save_now(db_path, cloud)
+                except Exception:
+                    # The change is still in the local file and goes along
+                    # with the next save; don't show an error page for it
+                    app.logger.exception("Couldn't save the database copy to Postgres")
+            return response
 
     def get_recipe_or_404(recipe_id):
         recipe = db.get_recipe(recipe_id, db_path=db_path)

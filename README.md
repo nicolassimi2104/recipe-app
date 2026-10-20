@@ -1,7 +1,7 @@
 # recipe-app
 App to help me learn claude code, create something practical, and get experience building websites
 
-To put it online for your phone (free, password-protected), see [DEPLOY.md](DEPLOY.md).
+To put it online for your phone (free, password-protected), see [DEPLOY.md](DEPLOY.md). Or use Render instead: see [RENDER.md](RENDER.md).
 
 ## Start it with one click
 Double-click the **Recipe App** shortcut on your Desktop (or in the Start menu).

@@ -1,0 +1,28 @@
+# Render "Blueprint": tells Render how to run the app (see RENDER.md).
+# It makes two free things: the web app and a Postgres database that
+# keeps a copy of your recipes (files on the free web app are wiped on restart).
+services:
+  - type: web
+    name: recipe-app
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # One worker, so only one copy of the app is saving at a time
+    startCommand: gunicorn wsgi:app --workers 1 --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.3
+      - key: DATABASE_URL
+        fromDatabase:
+          name: recipe-db
+          property: connectionString
+      - key: APP_PASSWORD
+        sync: false          # Render asks you to type it; it's never in the code
+      - key: SECRET_KEY
+        generateValue: true  # Render makes a random one
+      - key: SESSION_COOKIE_SECURE
+        value: "1"
+
+databases:
+  - name: recipe-db
+    plan: free
