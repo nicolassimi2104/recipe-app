@@ -14,7 +14,8 @@ import suggestions
 # the password tests set them on purpose with monkeypatch.setenv.
 @pytest.fixture(autouse=True)
 def clean_settings(monkeypatch):
-    for name in ("APP_PASSWORD", "SECRET_KEY", "DB_PATH", "SESSION_COOKIE_SECURE"):
+    for name in ("APP_PASSWORD", "SECRET_KEY", "DB_PATH", "SESSION_COOKIE_SECURE",
+                 "DATABASE_URL", "RESTORE_FILE"):
         monkeypatch.delenv(name, raising=False)
 
 

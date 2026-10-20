@@ -25,6 +25,8 @@ in plain language and keep code simple and readable.
 ## V3 roadmap (build in this order, one branch + PR each)
 The app is local-first for now: it runs on the owner's computer and stays free.
 No hosting or deploy work unless asked (DEPLOY.md stays for later).
+Optional Render hosting (owner asked for it): render.yaml + cloud_save.py keep a copy of
+recipes.db in free Postgres and reload from a JSON backup Secret File; steps in RENDER.md.
 A. (DONE) Browse by protein + one-tap "Add to this week" (plan saved in the database;
    label guessing rules are in labels.py)
 B. (DONE) Fresh finds: suggestions that refresh themselves when the app opens, with one-click import
