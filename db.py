@@ -35,6 +35,9 @@ NEW_RECIPE_COLUMNS = {
     "cuisine_by_hand": "INTEGER NOT NULL DEFAULT 0",
     "side_type": "TEXT NOT NULL DEFAULT ''",
     "fridge_days": "INTEGER",
+    "image": "TEXT NOT NULL DEFAULT ''",
+    "source_url": "TEXT NOT NULL DEFAULT ''",
+    "favorite": "INTEGER NOT NULL DEFAULT 0",
 }
 
 # Bump this when an upgrade step is added below. SQLite keeps the number in
@@ -340,7 +343,8 @@ def reguess_proteins(db_path=DEFAULT_DB_PATH):
 # ---------------------------------------------------------------------------
 
 def create_recipe(name, servings, ingredients, steps, tags, proteins=(), meal_type="",
-                  cuisine="", side_type="", fridge_days=None, db_path=DEFAULT_DB_PATH):
+                  cuisine="", side_type="", fridge_days=None, image="", source_url="",
+                  db_path=DEFAULT_DB_PATH):
     """Add a new recipe and return its id.
 
     ingredients: list of {"amount": "1/3", "unit": "cup", "name": "flour"}
@@ -349,14 +353,16 @@ def create_recipe(name, servings, ingredients, steps, tags, proteins=(), meal_ty
     proteins, meal_type, cuisine, side_type: labels picked by hand. Leave
         them blank (the default, and what imports do) and they're guessed.
     fridge_days: how many days it keeps in the fridge, or None if unknown
+    image, source_url: picture link and original page, or "" (imports fill them in)
     """
     conn = get_connection(db_path)
     try:
         # "with conn" saves everything at the end, or nothing if an error happens
         with conn:
             cursor = conn.execute(
-                "INSERT INTO recipes (name, servings, steps, fridge_days) VALUES (?, ?, ?, ?)",
-                (name, servings, steps, fridge_days),
+                "INSERT INTO recipes (name, servings, steps, fridge_days, image, source_url)"
+                " VALUES (?, ?, ?, ?, ?, ?)",
+                (name, servings, steps, fridge_days, image, source_url),
             )
             recipe_id = cursor.lastrowid
             _save_ingredients(conn, recipe_id, ingredients)
@@ -467,7 +473,8 @@ def search_recipes(query="", tags=(), db_path=DEFAULT_DB_PATH):
         )
         params += tags + [len(tags)]
 
-    sql = "SELECT id, name, servings, meal_type, cuisine, side_type, fridge_days FROM recipes"
+    sql = ("SELECT id, name, servings, meal_type, cuisine, side_type, fridge_days,"
+           " image, favorite FROM recipes")
     if conditions:
         sql += " WHERE " + " AND ".join(conditions)
     sql += " ORDER BY name"
@@ -487,7 +494,7 @@ def search_recipes(query="", tags=(), db_path=DEFAULT_DB_PATH):
 
 def update_recipe(recipe_id, name, servings, ingredients, steps, tags, proteins=None,
                   meal_type=None, cuisine=None, side_type="", fridge_days=None,
-                  db_path=DEFAULT_DB_PATH):
+                  image=None, source_url=None, db_path=DEFAULT_DB_PATH):
     """Replace a recipe's details, ingredients and tags with the new values.
 
     proteins, meal_type, cuisine:
@@ -498,6 +505,7 @@ def update_recipe(recipe_id, name, servings, ingredients, steps, tags, proteins=
             "guess it for me" from now on.
     side_type: the value to save ("" means guess it). Only kept for sides.
     fridge_days: the new value, or None for "don't know".
+    image, source_url: None keeps what is saved; a value (or "") replaces it.
     """
     conn = get_connection(db_path)
     try:
@@ -517,6 +525,10 @@ def update_recipe(recipe_id, name, servings, ingredients, steps, tags, proteins=
                 "UPDATE recipes SET name = ?, servings = ?, steps = ?, fridge_days = ? WHERE id = ?",
                 (name, servings, steps, fridge_days, recipe_id),
             )
+            if image is not None:
+                conn.execute("UPDATE recipes SET image = ? WHERE id = ?", (image, recipe_id))
+            if source_url is not None:
+                conn.execute("UPDATE recipes SET source_url = ? WHERE id = ?", (source_url, recipe_id))
             # Simplest approach: wipe the old ingredients and tag links, then save the new ones
             conn.execute("DELETE FROM ingredients WHERE recipe_id = ?", (recipe_id,))
             conn.execute("DELETE FROM recipe_tags WHERE recipe_id = ?", (recipe_id,))
@@ -524,6 +536,16 @@ def update_recipe(recipe_id, name, servings, ingredients, steps, tags, proteins=
             _save_tags(conn, recipe_id, tags)
             _save_labels(conn, recipe_id, name, ingredients, tags, proteins, meal_type,
                          cuisine, side_type)
+    finally:
+        conn.close()
+
+
+def set_favorite(recipe_id, favorite, db_path=DEFAULT_DB_PATH):
+    """Star (True) or un-star (False) a recipe. Does nothing if it doesn't exist."""
+    conn = get_connection(db_path)
+    try:
+        with conn:
+            conn.execute("UPDATE recipes SET favorite = ? WHERE id = ?", (1 if favorite else 0, recipe_id))
     finally:
         conn.close()
 

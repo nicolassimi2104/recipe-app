@@ -123,7 +123,7 @@ def parse_ingredient_line(line):
     Only the units in units.py count as units (tsp, cup, g...). Anything the
     parser isn't sure about stays in the name, so nothing is ever lost.
     """
-    text = _clean_line(line)
+    text = _fix_number_commas(_clean_line(line))
     whole_line = {"amount": "", "unit": "", "name": text}
 
     match = AMOUNT_AT_START.match(text)
@@ -144,6 +144,13 @@ def parse_ingredient_line(line):
         # "1 cup" with nothing after it: keep the whole line rather than guess
         return whole_line
     return {"amount": amount, "unit": unit, "name": name}
+
+
+# "1,000 g" -> "1000 g" and "1,5 kg" (decimal comma) -> "1.5 kg". Without this
+# the comma ended the amount, so "1,5 kg" came out as 1 and "5 kg" as the name.
+def _fix_number_commas(text):
+    text = re.sub(r"^(\d{1,3}(?:,\d{3})+)(?![\d,])", lambda m: m.group(1).replace(",", ""), text)
+    return re.sub(r"^(\d+),(\d{1,2})(?!\d)", r"\1.\2", text)
 
 
 # Trim spaces and bullets ("- ", "• "), and turn "1½" into "1 1/2"
@@ -272,13 +279,25 @@ def validate_recipe(item):
 
     if problems:
         return None, problems
-    return {
+    recipe = {
         "name": name.strip(),
         "servings": servings,
         "ingredients": ingredients,
         "steps": "\n".join(s.strip() for s in steps if s.strip()),
         "tags": db.parse_tags(",".join(tags)),
-    }, []
+    }
+    # Optional picture link and source page: only real web links are kept
+    for key in ("image", "source_url"):
+        link = clean_link(item.get(key))
+        if link:
+            recipe[key] = link
+    return recipe, []
+
+
+def clean_link(value):
+    """A web link (http/https) trimmed, or "" for anything else."""
+    link = value.strip() if isinstance(value, str) else ""
+    return link if link.lower().startswith(("http://", "https://")) and len(link) <= 2000 else ""
 
 
 # One ingredient: an object {"amount", "unit", "name"}, or a plain line of
@@ -322,13 +341,17 @@ def _number_text(value):
 
 def to_json_format(recipe):
     """A saved-style recipe dict back in the recipes.json format (steps as a list)."""
-    return {
+    data = {
         "name": recipe["name"],
         "servings": recipe["servings"],
         "tags": recipe["tags"],
         "ingredients": recipe["ingredients"],
         "steps": recipe["steps"].splitlines(),
     }
+    for key in ("image", "source_url"):   # only when there is one
+        if recipe.get(key):
+            data[key] = recipe[key]
+    return data
 
 
 def recipes_to_json(recipes):
@@ -443,7 +466,14 @@ def recipe_from_url(url):
     except Exception:
         # Pages can be broken in surprising ways; never crash the app over one
         raise ImportFailed("Couldn't read a recipe from that page.")
-    return recipe_from_scraper(scraper)
+    recipe, notes = recipe_from_scraper(scraper)
+    recipe["source_url"] = url
+    return recipe, notes
+
+
+def image_from_scraper(scraper):
+    """The recipe photo link from a scraper, or "" if the page has none."""
+    return clean_link(_ask(scraper, "image"))
 
 
 def recipe_from_scraper(scraper):
@@ -478,6 +508,9 @@ def recipe_from_scraper(scraper):
         "steps": "\n".join(str(s).strip() for s in steps if str(s).strip()),
         "tags": [],
     }
+    image = image_from_scraper(scraper)
+    if image:
+        recipe["image"] = image
     return recipe, notes
 
 

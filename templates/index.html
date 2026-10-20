@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_week_button.html" import week_button, label_chips with context %}
+{% from "_card_bits.html" import thumb, star with context %}
 
 {% block content %}
 <div class="page-head">
@@ -58,8 +59,15 @@
     {% if filtering %}
     {{ recipes|length }} of {{ total }} recipe{{ '' if total == 1 else 's' }}
     &middot; <a href="{{ url_for('index') }}">Clear filters</a>
+    {% elif home_note == 'favorites' %}
+    Your {{ recipes|length }} favorite{{ '' if recipes|length == 1 else 's' }}
+    &middot; <a href="{{ url_for('index', all=1) }}">See all {{ total }}</a>
+    {% elif home_note == 'latest' %}
+    Newest {{ recipes|length }} of {{ total }} &middot; <a href="{{ url_for('index', all=1) }}">See all</a>
+    &middot; star <span aria-hidden="true">&#9734;</span> recipes to pin them here
     {% else %}
     {{ total }} recipe{{ '' if total == 1 else 's' }}
+    {% if showing_all %}&middot; <a href="{{ url_for('index') }}">Back to short list</a>{% endif %}
     {% endif %}
 </p>
 {% endif %}
@@ -68,6 +76,8 @@
 <ul class="recipe-list">
     {% for recipe in recipes %}
     <li id="recipe-{{ recipe.id }}" class="recipe-card">
+        <a href="{{ url_for('recipe_detail', recipe_id=recipe.id) }}" class="thumb-link" tabindex="-1">{{ thumb(recipe) }}</a>
+        <div class="card-body">
         <a href="{{ url_for('recipe_detail', recipe_id=recipe.id) }}" class="recipe-name">{{ recipe.name }}</a>
         <div class="meta">
             {{ label_chips(recipe) }}
@@ -75,6 +85,8 @@
             {% for tag in recipe.tags %}<a href="{{ toggle_link(tag) }}" class="tag{% if tag in active_tags %} active{% endif %}">{{ tag }}</a>{% endfor %}
         </div>
         {{ week_button(recipe.id, anchor="#recipe-" ~ recipe.id) }}
+        </div>
+        {{ star(recipe, anchor="#recipe-" ~ recipe.id) }}
     </li>
     {% endfor %}
 </ul>
