@@ -20,6 +20,10 @@
         <input type="text" name="name" value="{{ recipe.name }}" required>
     </label>
 
+    <label>Photo link <span class="hint">(optional, a web address ending in .jpg or similar)</span>
+        <input type="url" name="image" value="{{ recipe.image or '' }}" placeholder="https://...">
+    </label>
+
     <label>Servings
         <input type="number" name="servings" value="{{ recipe.servings }}" min="1" required>
     </label>

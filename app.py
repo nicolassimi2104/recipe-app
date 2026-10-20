@@ -77,6 +77,9 @@ def units_links(endpoint, **view_values):
     return links
 
 
+HOME_LATEST = 8   # recipes shown on the home page when none are starred
+
+
 def read_recipe_form(form):
     """Pull the recipe fields out of a submitted form.
 
@@ -128,6 +131,7 @@ def read_recipe_form(form):
         "cuisine": labels.clean_cuisine(form.get("cuisine", "")),
         "side_type": labels.clean_side_type(form.get("side_type", "")),
         "fridge_days": fridge_text if errors else fridge_days,
+        "image": importer.clean_link(form.get("image", "")),
     }
     return recipe, errors
 
@@ -262,6 +266,18 @@ def create_app(db_path=None):
         matches = db.search_recipes(query, active_tags, db_path=db_path)
         protein_counts = labels.count_proteins(matches)
         recipes = [r for r in matches if protein in r["proteins"]] if protein else matches
+        filtering_now = bool(query or active_tags or protein)
+
+        # Home page with no filters: just your favorites (or the newest 8 if you
+        # haven't starred any). Any search, tag or protein looks at everything.
+        showing_all = request.args.get("all") == "1"
+        home_note = ""
+        if not filtering_now and not showing_all and matches:
+            favorites = [r for r in matches if r["favorite"]]
+            if favorites:
+                recipes, home_note = favorites, "favorites"
+            elif len(matches) > HOME_LATEST:
+                recipes, home_note = sorted(matches, key=lambda r: -r["id"])[:HOME_LATEST], "latest"
 
         # Show active tags first (so they're visible when the pills scroll
         # sideways on a phone), then the rest. An active tag that no recipe uses
@@ -302,6 +318,8 @@ def create_app(db_path=None):
             match_total=len(matches),
             protein_link=protein_link,
             filtering=filtering,
+            home_note=home_note,
+            showing_all=showing_all,
             # After importing several recipes: /?imported=3&skipped=1 shows a note
             imported=request.args.get("imported", type=int),
             skipped=request.args.get("skipped", type=int),
@@ -550,6 +568,12 @@ def create_app(db_path=None):
 
     def back_to_page():
         return redirect(safe_next(request.form.get("next", "")))
+
+    @app.route("/favorite/<int:recipe_id>", methods=["POST"])
+    def favorite_toggle(recipe_id):
+        recipe = get_recipe_or_404(recipe_id)
+        db.set_favorite(recipe_id, not recipe["favorite"], db_path=db_path)
+        return back_to_page()
 
     @app.route("/plan/add/<int:recipe_id>", methods=["POST"])
     def plan_add(recipe_id):

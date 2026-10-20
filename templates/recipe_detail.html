@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_week_button.html" import week_button with context %}
+{% from "_card_bits.html" import star with context %}
 
 {% block title %}{{ recipe.name }} - Recipe App{% endblock %}
 
@@ -15,6 +16,7 @@
     </form>
 </div>
 {% endif %}
+{% if recipe.image %}<img class="detail-photo" src="{{ recipe.image }}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">{% endif %}
 <h1>{{ recipe.name }}</h1>
 <div class="meta">
     {% for key in recipe.proteins %}<a href="{{ url_for('index', protein=key) }}" class="label protein-{{ key }}">{{ protein_names[key] }}</a>{% endfor %}
@@ -29,6 +31,7 @@
 {% endif %}
 {# Adds it at the servings shown below, so scale first if you want more #}
 {{ week_button(recipe.id, servings=servings) }}
+{{ star(recipe) }}
 {% if recipe.id in this_week %}
 <p class="hint">On the plan for {{ this_week[recipe.id] }} servings. <a href="{{ url_for('plan') }}">Change on the plan page</a></p>
 {% endif %}

@@ -14,7 +14,10 @@ CREATE TABLE IF NOT EXISTS recipes (
     cuisine   TEXT   NOT NULL DEFAULT '',  -- american, mexican, asian, italian, mediterranean or other
     cuisine_by_hand   INTEGER NOT NULL DEFAULT 0,
     side_type TEXT   NOT NULL DEFAULT '',  -- sides only: starch, vegetable, salad or other
-    fridge_days INTEGER                    -- how many days it keeps in the fridge, or blank
+    fridge_days INTEGER,                   -- how many days it keeps in the fridge, or blank
+    image      TEXT    NOT NULL DEFAULT '',  -- picture link, or blank
+    source_url TEXT    NOT NULL DEFAULT '',  -- the page it was imported from, or blank
+    favorite   INTEGER NOT NULL DEFAULT 0    -- 1 = starred; favorites show on the home page
 );
 
 CREATE TABLE IF NOT EXISTS ingredients (
